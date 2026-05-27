@@ -44,6 +44,14 @@ If you don't see the latest version (v1.3.9) yet in the manager then just downlo
 Also you will need to update ComfyUI-LTXVideo and ComfyUI-KJNodes to the latest version as well. You cannot use this node without updating ComfyUI-LTXVideo!
 
 # 🔄 Recent Updates
+**CS fork**
+  * **New node: CS-LTX Six-Grid Director / CS-LTX 六宫格导演台**
+    - Adds an automatic six-grid storyboard workflow on top of the original LTX Director timeline.
+    - Accepts a single 3x2 storyboard image or a batch of six images, then builds six editable timeline shots.
+    - Connects LLM/GPT shot text into the timeline so prompts can be reviewed and manually edited before generation.
+    - Keeps the original `LTXSixGridDirector` node id as a compatibility alias for older local workflows.
+    - Adds a guide latent size alignment fix in `LTXDirectorGuide` for more stable LTX guide insertion.
+
 **v1.3.9**
   * **Fixed recent updates not showing in the manager**
 
@@ -137,6 +145,71 @@ Overhaul of the load audio node. Features a simple interface to easily trim audi
 </details>
 
 # ⚙️ Custom Nodes
+
+## CS-LTX Six-Grid Director / CS-LTX 六宫格导演台
+
+`CS-LTX 六宫格导演台` 是这个分支的核心新增节点。它保留了原版 LTX Director 的时间线编辑能力，同时把六宫格分镜图、LLM/GPT/Qwen 分镜文本、LTX 引导图生成流程接到一起，让“六宫格图像 -> 六段分镜 -> 可编辑时间线 -> LTX 生成”尽量自动化。
+
+它适合这样的工作流：先由上游节点生成一张 3x2 六宫格分镜图，再让反推模型或 GPT 输出 6 段分镜描述，导演台节点会自动把六宫格拆成 6 个分镜块，并把对应文本写入时间线。运行前你仍然可以在前端手动修改每段分镜的提示词、时长和引导强度。
+
+**ComfyUI 节点名称：**
+
+| Name | Meaning |
+| --- | --- |
+| `CS-LTX 六宫格导演台` | ComfyUI 里看到的节点显示名。 |
+| `CS-LTXSixGridDirector` | 新的节点内部 ID。 |
+| `LTXSixGridDirector` | 旧工作流兼容别名，保留它是为了让旧版本工作流还能打开。 |
+
+**基础流程：**
+
+1. 用上游节点生成或加载一张 3x2 六宫格分镜图。
+2. 把六宫格图片接到 `六宫格拆分图` / `storyboard_images`。
+3. 把 LLM/GPT/Qwen 输出的分镜文本接到 `GPT 分镜文本` / `llm_response`。
+4. 把 LTX 模型和 CLIP 接到 `模型` / `model` 与 `文本编码器` / `clip`。
+5. 如果工作流需要音频潜空间，可以额外接入 Audio VAE。
+6. 打开节点前端时间线，检查 6 个图像分镜块，并按需要调整每段时长和提示词。
+7. 把 `引导数据` / `guide_data` 接到 `LTX Director Guide`，把 `视频潜空间` / `video_latent` 接入 LTX 采样链路。
+
+**六宫格读取顺序：**
+
+六宫格按标准 3x2 顺序读取，从左到右、从上到下：
+
+```text
+1  2  3
+4  5  6
+```
+
+也就是说，第 1 段是左上角，第 3 段是右上角，第 4 段是左下角，第 6 段是右下角。
+
+**推荐的分镜文本格式：**
+
+推荐让 GPT/Qwen 输出 JSON，因为它能同时保存分镜序号、提示词和每段帧数，最适合全自动工作流：
+
+```json
+[
+  {"shot": 1, "prompt": "Wide shot, character enters the room...", "frames": 20},
+  {"shot": 2, "prompt": "Medium shot, character reports to the boss...", "frames": 20},
+  {"shot": 3, "prompt": "Close-up, boss listens and thinks...", "frames": 20}
+]
+```
+
+节点也会尝试解析编号文本或普通文本，但如果你希望工作流稳定自动运行，JSON 是最稳的格式。
+
+**前端可手动编辑：**
+
+自动填充之后，6 个分镜块不是锁死的。你仍然可以在导演台里手动调整：
+
+- 拖动或缩放分镜块，修改每段起止时间；
+- 选中分镜后，在文本框里修改该段提示词；
+- 修改每段图像引导强度；
+- 继续手动添加图像、文本或音频片段；
+- 使用原版 LTX Director 的自定义音频和时间线播放控制。
+
+这些手动修改会写入 `时间线数据` / `timeline_data`。真正运行时，节点会优先使用当前前端时间线里的最终内容。
+
+**LTX 引导尺寸修复：**
+
+有些 LTX 工作流里，引导图经过 VAE 编码后会得到和主视频 latent 不一致的空间尺寸，例如 `Expected size 33 but got size 17`。这个分支在 `LTXDirectorGuide` 中加入了尺寸对齐步骤，会在插入 keyframe 前把 guide latent 自动对齐到当前视频 latent 的尺寸，减少这类报错。
 
 
 ## LTX Director
