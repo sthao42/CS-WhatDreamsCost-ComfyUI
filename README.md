@@ -1,21 +1,40 @@
 # CS-WhatDreamsCost-ComfyUI
 
-## Pre / Original Source
+## Source and Attribution
 
 This project is based on [WhatDreamsCost/WhatDreamsCost-ComfyUI](https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI).
-The original author is credited here as the pre-existing source. This fork adds a separate `CS-` namespace so it can coexist with the original plugin without replacing the original node IDs. It includes the `CS-LTX Six-Grid Director` workflow improvements, six-grid storyboard automation, Chinese UI labels, and LTX guide-size alignment fixes.
+The original author is credited here as the pre-existing source. This repository is a CS fork that adds a separate `CS-` namespace, so it can be installed beside the original plugin without replacing the original WhatDreamsCost node IDs.
+
+## Overview
+
+`CS-WhatDreamsCost-ComfyUI` focuses on an automated LTX storyboard workflow:
+
+- Split a single 3x2 six-grid storyboard image into six ordered shots.
+- Pass LLM/GPT/Qwen shot text into the director timeline.
+- Review and manually edit each shot prompt, duration, image guide, and audio segment before generation.
+- Keep the original LTX Director timeline workflow, while registering all public nodes under `CS-...` IDs.
+- Add guide latent size alignment in `CS-LTXDirectorGuide` to reduce LTX guide insertion size errors.
+
+这个分支的核心目标是把“六宫格图像 -> 六段分镜 -> 可编辑导演台时间线 -> LTX 生成”尽量自动化，同时保留前端手动修改能力。
 
 ## CS Namespace
 
-This fork intentionally registers public nodes with `CS-` IDs, such as `CS-LTXSixGridDirector`, `CS-LTXDirector`, `CS-LTXDirectorGuide`, `CS-MultiImageLoader`, and `CS-LoadAudioUI`. The legacy WhatDreamsCost node IDs are not registered by this fork, so installing it beside the original plugin should not replace the original nodes.
+This fork intentionally registers public nodes with `CS-` IDs. The legacy WhatDreamsCost node IDs are not registered here, so shared platforms such as RunningHub should not treat this package as a replacement for the original plugin.
 
-# Overview
+| Original-style node | CS fork node ID |
+| --- | --- |
+| `LTXDirector` | `CS-LTXDirector` |
+| `LTXAutoDirector` | `CS-LTXAutoDirector` |
+| `LTXSixGridDirector` | `CS-LTXSixGridDirector` |
+| `LTXDirectorGuide` | `CS-LTXDirectorGuide` |
+| `LTXKeyframer` | `CS-LTXKeyframer` |
+| `LTXSequencer` | `CS-LTXSequencer` |
+| `MultiImageLoader` | `CS-MultiImageLoader` |
+| `SpeechLengthCalculator` | `CS-SpeechLengthCalculator` |
+| `LoadAudioUI` | `CS-LoadAudioUI` |
+| `LoadVideoUI` | `CS-LoadVideoUI` |
 
-This will be a collection of free resources for ComfyUI.
-
-Hopefully it will make creating cool stuff easier.
-
-All of my nodes are created with the help of AI, so there may or may not be redundant, messy code.
+Old workflows that reference unprefixed WhatDreamsCost node IDs need to be updated to the matching `CS-...` node IDs before they can use this fork.
 
 ## ▶️ YouTube Tutorial Videos
 
@@ -36,24 +55,34 @@ All of my nodes are created with the help of AI, so there may or may not be redu
   </tr>
 </table>
 
-## ❓ How to install nodes
+## How to Install
 
-- Navigate to your `/ComfyUI/custom_nodes/ folder`
-- Run `git clone https://github.com/yg496/CS-WhatDreamsCost-ComfyUI`
-- Or download through the ComfyUI Manager.
+1. Navigate to your `ComfyUI/custom_nodes` folder.
+2. Clone this repository:
 
-**❗❗IMPORTANT❗❗**
+```bash
+git clone https://github.com/yg496/CS-WhatDreamsCost-ComfyUI.git
+```
+
+3. Restart ComfyUI.
+4. Search for `CS-` in the ComfyUI node menu.
+
+You can also install it through ComfyUI Manager after the package is available there.
+
+**Important**
 
 If you don't see the latest version (v1.4.0) yet in the manager then just downloaded the nightly version (or fetch the updates to update the list to see the latest version). 
 Also you will need to update ComfyUI-LTXVideo and ComfyUI-KJNodes to the latest version as well. You cannot use this node without updating ComfyUI-LTXVideo!
 
-# 🔄 Recent Updates
-**CS fork**
+# Recent Updates
+
+**v1.4.0 CS fork**
   * **New node: CS-LTX Six-Grid Director / CS-LTX 六宫格导演台**
     - Adds an automatic six-grid storyboard workflow on top of the original LTX Director timeline.
     - Accepts a single 3x2 storyboard image or a batch of six images, then builds six editable timeline shots.
-    - Connects LLM/GPT shot text into the timeline so prompts can be reviewed and manually edited before generation.
+    - Connects LLM/GPT/Qwen shot text into the timeline so prompts can be reviewed and manually edited before generation.
     - Registers all public nodes under `CS-...` IDs to avoid overwriting the original WhatDreamsCost nodes on shared platforms.
+    - Refreshes six-grid previews when the upstream storyboard image changes.
     - Adds a guide latent size alignment fix in `CS-LTXDirectorGuide` for more stable LTX guide insertion.
 
 **v1.3.9**
@@ -216,7 +245,7 @@ Overhaul of the load audio node. Features a simple interface to easily trim audi
 有些 LTX 工作流里，引导图经过 VAE 编码后会得到和主视频 latent 不一致的空间尺寸，例如 `Expected size 33 but got size 17`。这个分支在 `CS-LTXDirectorGuide` 中加入了尺寸对齐步骤，会在插入 keyframe 前把 guide latent 自动对齐到当前视频 latent 的尺寸，减少这类报错。
 
 
-## LTX Director
+## CS-LTX Director
 <img width="1481" height="833" alt="Clipboard Image (2)" src="https://github.com/user-attachments/assets/08f3fe53-9393-4f5d-9de5-58b229fbed47" />
 
 A Complete Timeline Editor For LTX 2.3. This is the sucessor of my previous nodes, and has loads of features in it. It was originally based off of [Kijai's Prompt Relay node](https://github.com/kijai/ComfyUI-PromptRelay) and my LTX Sequencer/Multi Image Loader nodes.
@@ -234,33 +263,33 @@ Download workflows here: https://github.com/yg496/CS-WhatDreamsCost-ComfyUI/tree
 **Tutorial videos and documentation coming soon**
 
 
-## Multi Image Loader
+## CS-Multi Image Loader
 <img width="1280" height="720" alt="Multi_Image_Loader_Wide_Gif" src="https://github.com/user-attachments/assets/99b6afd8-5197-4e6c-81da-a7bd156c42c7" />
 
 An Image loader that features a built in gallery, allowing your to easily rearrange images and output them seperately or batched together. It also combines the image resize node and LTXVPreprocess node to reduce clutter in LTX workflows.
 
-## LTX Sequencer
+## CS-LTX Sequencer
 ![LTX_Sequencer_GIF](https://github.com/user-attachments/assets/88f27155-f50e-4cb2-b937-ab173e6bdf0b)
 
 An overhaul of the LTXVAddGuideMulti node. It allows you to quickly create FFLF (First Frame Last Frame) videos, shot sequences, supports any number of middle frames.
 
-Connect the Multi Image Loader node's multi_output to automatically update the node's widgets.
+Connect the `CS-MultiImageLoader` node's `multi_output` to automatically update the node's widgets.
 
 It also has a sync feature that syncs all LTX Sequencer nodes together in realtime, removing the need to edit every single node manually every time you want to make a change to something. 
 
 
-## LTX Keyframer
+## CS-LTX Keyframer
 <img width="1082" height="608" alt="LTX Keyframer Wide" src="https://github.com/user-attachments/assets/850ba4a2-dbca-4e5a-a580-1c271e9f0c41" />
 
 An overhaul of the LTXVImgToVideoInplaceKJ node. It allows you to quickly create FFLF (First Frame Last Frame) videos and shot sequences. Also upports any number of middle frames.
 
-Connect the Multi Image Loader node's multi_output to automatically update the node's widgets.
+Connect the `CS-MultiImageLoader` node's `multi_output` to automatically update the node's widgets.
 
 It also has a sync feature that syncs all LTX Keyframer nodes together in realtime, removing the need to edit every single node manually every time you want to make a change to something. 
 
 **I would recommend using the LTX Sequencer Node over this node, after further testing it seems superior in at pretty much everything. I'll leave it in just in case more people want to test it**
 
-## Speech Length Calculator
+## CS-Speech Length Calculator
 <img width="1280" height="720" alt="Speech Length Calculator v2 Gif" src="https://github.com/user-attachments/assets/04b9a1cf-20e4-4b7b-a9c6-4a5a0825995b" />
 <br>
 <br>
@@ -270,7 +299,7 @@ If you connect another string/text node to the text_input, it will still update 
 
 I kept having to play the guessing game on my own generations so I made this node to make it easier :man_shrugging:
 
-## Load Video UI  
+## CS-Load Video UI  
 <table width="100%">
   <tr>
     <td width="50%" align="center">
@@ -298,7 +327,7 @@ An upgraded Load Video node. It has the following features:
 
 Please note that due to ComfyUI limitations (and the fact that this node doesn't use any addtional libraries), this node will not work well for outputting large videos. You can trim any length of video without a problem, but if the output is still large it will end up using a lot of RAM. I have implemented various optimizations though to make it use less memory.
 
-## Load Audio UI  
+## CS-Load Audio UI  
 <img width="1280" height="720" alt="Load_Audio_UI_V2" src="https://github.com/user-attachments/assets/e3dc5c8d-d0b9-4336-8196-944204719239" />
 <br>
 <br>
