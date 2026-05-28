@@ -27,7 +27,7 @@ from .patches import detect_model_type, apply_patches
 
 log = logging.getLogger(__name__)
 
-# Custom socket type shared with LTXSequencer
+# Custom socket type shared with CS-LTXSequencer
 GuideData = io.Custom("GUIDE_DATA")
 
 
@@ -376,9 +376,9 @@ class LTXDirector(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(
-            node_id="LTXDirector",
-            display_name="LTX Director",
-            category="WhatDreamsCost",
+            node_id="CS-LTXDirector",
+            display_name="CS LTX Director",
+            category="CS-WhatDreamsCost",
             description=(
                 "Same as Prompt Relay Encode, but local prompts and segment lengths are edited "
                 "visually as draggable blocks on a timeline. The duration_frames input only sets the "
@@ -653,9 +653,9 @@ class LTXDirector(io.ComfyNode):
 
 
 NODE_CLASS_MAPPINGS = {
-    "LTXDirector": LTXDirector,
+    "CS-LTXDirector": LTXDirector,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "PromptRelayEncodeTimeline": "Prompt Relay Encode (Timeline)",
+    "CS-LTXDirector": "CS LTX Director",
 }

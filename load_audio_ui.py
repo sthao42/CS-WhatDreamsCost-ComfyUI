@@ -71,7 +71,7 @@ class LoadAudioUI:
             }
         }
 
-    CATEGORY = "WhatDreamsCost"
+    CATEGORY = "CS-WhatDreamsCost"
     RETURN_TYPES = ("AUDIO", "FLOAT")
     RETURN_NAMES = ("audio", "duration")
     FUNCTION = "load_audio"

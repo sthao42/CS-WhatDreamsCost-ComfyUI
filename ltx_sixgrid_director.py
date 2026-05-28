@@ -276,7 +276,7 @@ class LTXSixGridDirector(io.ComfyNode):
         return io.Schema(
             node_id="CS-LTXSixGridDirector",
             display_name="CS-LTX \u516d\u5bab\u683c\u5bfc\u6f14\u53f0",
-            category="WhatDreamsCost",
+            category="CS-WhatDreamsCost",
             description=(
                 "LTX \u5bfc\u6f14\u53f0\u7684\u516d\u5bab\u683c\u81ea\u52a8\u7248\uff1a\u81ea\u52a8\u63a5\u6536\u62c6\u5206\u56fe\u548c GPT \u5206\u955c\u6587\u672c\uff0c"
                 "\u540c\u65f6\u4fdd\u7559\u53ef\u624b\u52a8\u7f16\u8f91\u7684\u65f6\u95f4\u7ebf\u3002"
@@ -442,10 +442,8 @@ class LTXSixGridDirector(io.ComfyNode):
 
 NODE_CLASS_MAPPINGS = {
     "CS-LTXSixGridDirector": LTXSixGridDirector,
-    "LTXSixGridDirector": LTXSixGridDirector,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "CS-LTXSixGridDirector": "CS-LTX \u516d\u5bab\u683c\u5bfc\u6f14\u53f0",
-    "LTXSixGridDirector": "LTX \u516d\u5bab\u683c\u5bfc\u6f14\u53f0",
 }

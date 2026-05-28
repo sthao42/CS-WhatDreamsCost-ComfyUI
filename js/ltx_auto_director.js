@@ -637,9 +637,9 @@ function hookWidget(node, name, render) {
 }
 
 app.registerExtension({
-  name: "Comfy.LTXAutoDirector.Preview",
+  name: "Comfy.CS-LTXAutoDirector.Preview",
   async nodeCreated(node) {
-    if (node.comfyClass !== "LTXAutoDirector") return;
+    if (node.comfyClass !== "CS-LTXAutoDirector") return;
 
     ensureStyles();
     node._ltxAutoTextVisible = false;

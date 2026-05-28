@@ -3,7 +3,11 @@
 ## Pre / Original Source
 
 This project is based on [WhatDreamsCost/WhatDreamsCost-ComfyUI](https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI).
-The original author is credited here as the pre-existing source. This fork keeps the original nodes and adds the `CS-LTX Six-Grid Director` workflow improvements, including six-grid storyboard automation, Chinese UI labels, and LTX guide-size alignment fixes.
+The original author is credited here as the pre-existing source. This fork adds a separate `CS-` namespace so it can coexist with the original plugin without replacing the original node IDs. It includes the `CS-LTX Six-Grid Director` workflow improvements, six-grid storyboard automation, Chinese UI labels, and LTX guide-size alignment fixes.
+
+## CS Namespace
+
+This fork intentionally registers public nodes with `CS-` IDs, such as `CS-LTXSixGridDirector`, `CS-LTXDirector`, `CS-LTXDirectorGuide`, `CS-MultiImageLoader`, and `CS-LoadAudioUI`. The legacy WhatDreamsCost node IDs are not registered by this fork, so installing it beside the original plugin should not replace the original nodes.
 
 # Overview
 
@@ -40,7 +44,7 @@ All of my nodes are created with the help of AI, so there may or may not be redu
 
 **❗❗IMPORTANT❗❗**
 
-If you don't see the latest version (v1.3.9) yet in the manager then just downloaded the nightly version (or fetch the updates to update the list to see the latest version). 
+If you don't see the latest version (v1.4.0) yet in the manager then just downloaded the nightly version (or fetch the updates to update the list to see the latest version). 
 Also you will need to update ComfyUI-LTXVideo and ComfyUI-KJNodes to the latest version as well. You cannot use this node without updating ComfyUI-LTXVideo!
 
 # 🔄 Recent Updates
@@ -49,8 +53,8 @@ Also you will need to update ComfyUI-LTXVideo and ComfyUI-KJNodes to the latest 
     - Adds an automatic six-grid storyboard workflow on top of the original LTX Director timeline.
     - Accepts a single 3x2 storyboard image or a batch of six images, then builds six editable timeline shots.
     - Connects LLM/GPT shot text into the timeline so prompts can be reviewed and manually edited before generation.
-    - Keeps the original `LTXSixGridDirector` node id as a compatibility alias for older local workflows.
-    - Adds a guide latent size alignment fix in `LTXDirectorGuide` for more stable LTX guide insertion.
+    - Registers all public nodes under `CS-...` IDs to avoid overwriting the original WhatDreamsCost nodes on shared platforms.
+    - Adds a guide latent size alignment fix in `CS-LTXDirectorGuide` for more stable LTX guide insertion.
 
 **v1.3.9**
   * **Fixed recent updates not showing in the manager**
@@ -158,7 +162,7 @@ Overhaul of the load audio node. Features a simple interface to easily trim audi
 | --- | --- |
 | `CS-LTX 六宫格导演台` | ComfyUI 里看到的节点显示名。 |
 | `CS-LTXSixGridDirector` | 新的节点内部 ID。 |
-| `LTXSixGridDirector` | 旧工作流兼容别名，保留它是为了让旧版本工作流还能打开。 |
+| `CS-...` | 这个分支的所有公开节点都使用 `CS-` 前缀，避免覆盖原作者插件。 |
 
 **基础流程：**
 
@@ -168,7 +172,7 @@ Overhaul of the load audio node. Features a simple interface to easily trim audi
 4. 把 LTX 模型和 CLIP 接到 `模型` / `model` 与 `文本编码器` / `clip`。
 5. 如果工作流需要音频潜空间，可以额外接入 Audio VAE。
 6. 打开节点前端时间线，检查 6 个图像分镜块，并按需要调整每段时长和提示词。
-7. 把 `引导数据` / `guide_data` 接到 `LTX Director Guide`，把 `视频潜空间` / `video_latent` 接入 LTX 采样链路。
+7. 把 `引导数据` / `guide_data` 接到 `CS-LTXDirectorGuide`，把 `视频潜空间` / `video_latent` 接入 LTX 采样链路。
 
 **六宫格读取顺序：**
 
@@ -209,7 +213,7 @@ Overhaul of the load audio node. Features a simple interface to easily trim audi
 
 **LTX 引导尺寸修复：**
 
-有些 LTX 工作流里，引导图经过 VAE 编码后会得到和主视频 latent 不一致的空间尺寸，例如 `Expected size 33 but got size 17`。这个分支在 `LTXDirectorGuide` 中加入了尺寸对齐步骤，会在插入 keyframe 前把 guide latent 自动对齐到当前视频 latent 的尺寸，减少这类报错。
+有些 LTX 工作流里，引导图经过 VAE 编码后会得到和主视频 latent 不一致的空间尺寸，例如 `Expected size 33 but got size 17`。这个分支在 `CS-LTXDirectorGuide` 中加入了尺寸对齐步骤，会在插入 keyframe 前把 guide latent 自动对齐到当前视频 latent 的尺寸，减少这类报错。
 
 
 ## LTX Director

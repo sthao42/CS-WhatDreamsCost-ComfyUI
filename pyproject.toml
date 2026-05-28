@@ -1,7 +1,7 @@
 [project]
 name = "CS-WhatDreamsCost-ComfyUI"
 description = "CS LTX six-grid director and supporting ComfyUI nodes based on WhatDreamsCost-ComfyUI."
-version = "1.3.9"
+version = "1.4.0"
 license = {file = "LICENSE"} 
 # classifiers = [
 #     # For OS-independent nodes (works on all operating systems)
@@ -30,6 +30,5 @@ Documentation = "https://github.com/yg496/CS-WhatDreamsCost-ComfyUI/wiki"
 [tool.comfy]
 PublisherId = "yg496"
 DisplayName = "CS-WhatDreamsCost-ComfyUI"
-Icon = "https://raw.githubusercontent.com/WhatDreamsCost/MediaSyncer/refs/heads/main/Icon.png"
 includes = [] 
 # "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility

@@ -699,7 +699,7 @@ function prNormalizeImageWidgetValue(value) {
   return { filename: String(value), subfolder: "", type: "" };
 }
 
-const SIX_GRID_NODE_TYPES = ["CS-LTXSixGridDirector", "LTXSixGridDirector"];
+const SIX_GRID_NODE_TYPES = ["CS-LTXSixGridDirector"];
 
 function prIsSixGridDirector(node) {
   return SIX_GRID_NODE_TYPES.includes(node?.comfyClass) || SIX_GRID_NODE_TYPES.includes(node?.type);
@@ -985,8 +985,14 @@ function prImageFromUrl(url) {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = reject;
-    img.src = url;
+    const sep = String(url).includes("?") ? "&" : "?";
+    img.src = `${url}${sep}_ltx_preview=${Date.now()}`;
   });
+}
+
+function prSixGridSourceKey(source) {
+  if (!source?.url) return "";
+  return `${source.cols || 3}x${source.rows || 2}|${source.url}`;
 }
 
 async function prCropSixGridToDataUrls(source) {
@@ -1106,6 +1112,9 @@ class TimelineEditor {
     this.displayModeWidget = this.node.widgets.find(w => w.name === "display_mode");
     this.llmResponseWidget = this.node.widgets.find(w => w.name === "llm_response");
     this._lastLLMResponse = String(this.llmResponseWidget?.value || "");
+    this._lastSixGridSourceKey = "";
+    this._lastSixGridCheck = 0;
+    this._sixGridRefreshInFlight = false;
 
     this.timeline = parseInitial(this.timelineDataWidget?.value);
     this.loadImages();
@@ -1892,6 +1901,7 @@ class TimelineEditor {
   checkResize() {
     const viewportWidth = this.viewport.clientWidth;
     const currentScale = this.getRenderScale();
+    this.checkSixGridSourceChange();
 
     if (viewportWidth > 0 && (this._lastWidth !== viewportWidth || this._lastZoom !== this.zoomLevel || this._lastScale !== currentScale)) {
       this._lastWidth = viewportWidth;
@@ -1903,6 +1913,35 @@ class TimelineEditor {
       this.resizeCanvas(newCanvasWidth);
     }
     this._renderLoop = requestAnimationFrame(() => this.checkResize());
+  }
+
+  checkSixGridSourceChange() {
+    if (!prIsSixGridDirector(this.node) || this._sixGridRefreshInFlight) return;
+    const now = performance.now ? performance.now() : Date.now();
+    if (now - this._lastSixGridCheck < 1000) return;
+    this._lastSixGridCheck = now;
+
+    const source = prGetSixGridSource(this.node);
+    const sourceKey = prSixGridSourceKey(source);
+    if (!sourceKey) return;
+
+    const hasStoryboardSegments = this.timeline.segments.some((seg) => seg?.source === "storyboard_images");
+    if (!hasStoryboardSegments) {
+      this._lastSixGridSourceKey = sourceKey;
+      return;
+    }
+
+    const stalePreview = this.timeline.segments.some((seg) => (
+      seg?.source === "storyboard_images" &&
+      (!seg.imageB64 || seg.storyboardPreviewKey !== sourceKey)
+    ));
+    if (!stalePreview && this._lastSixGridSourceKey === sourceKey) return;
+
+    this._lastSixGridSourceKey = sourceKey;
+    this._sixGridRefreshInFlight = true;
+    this.refreshSixGridPreviews(source, sourceKey).finally(() => {
+      this._sixGridRefreshInFlight = false;
+    });
   }
 
   getRenderScale() {
@@ -2150,31 +2189,10 @@ class TimelineEditor {
     if (!prIsSixGridDirector(this.node)) return;
 
     const source = prGetSixGridSource(this.node);
+    const sourceKey = prSixGridSourceKey(source);
     const ignoreManualLengths = !onlyIfEmpty || this.timeline.segments.length === 0;
     if (onlyIfEmpty && this.timeline.segments.length > 0) {
-      const needsPreview = this.timeline.segments.some((seg) => seg?.source === "storyboard_images" && !seg.imageB64);
-      if (!needsPreview) return;
-
-      try {
-        const imageUrls = await prCropSixGridToDataUrls(source);
-        let changed = false;
-        for (let idx = 0; idx < this.timeline.segments.length; idx++) {
-          const seg = this.timeline.segments[idx];
-          if (!seg || seg.source !== "storyboard_images" || seg.imageB64) continue;
-          const imageIndex = Number.isFinite(Number(seg.batch_index)) ? Number(seg.batch_index) : idx;
-          if (imageUrls[imageIndex]) {
-            seg.imageB64 = imageUrls[imageIndex];
-            changed = true;
-          }
-        }
-        if (changed) {
-          this.loadImages();
-          this.commitChanges(true);
-          this.render();
-        }
-      } catch (err) {
-        console.warn("[LTX Six Grid Director] Could not refresh six-grid preview images:", err);
-      }
+      await this.refreshSixGridPreviews(source, sourceKey);
       return;
     }
 
@@ -2205,6 +2223,7 @@ class TimelineEditor {
         source: "storyboard_images",
         batch_index: idx,
         guideStrength: 1.0,
+        storyboardPreviewKey: sourceKey,
         imageB64: imageUrls[idx] || "",
       });
       cursor += length;
@@ -2216,6 +2235,37 @@ class TimelineEditor {
     this.updateUIFromSelection();
     this.commitChanges(true);
     this.render();
+  }
+
+  async refreshSixGridPreviews(source = null, sourceKey = "") {
+    source = source || prGetSixGridSource(this.node);
+    sourceKey = sourceKey || prSixGridSourceKey(source);
+    if (!source?.url || !sourceKey) return false;
+
+    try {
+      const imageUrls = await prCropSixGridToDataUrls(source);
+      let changed = false;
+      for (let idx = 0; idx < this.timeline.segments.length; idx++) {
+        const seg = this.timeline.segments[idx];
+        if (!seg || seg.source !== "storyboard_images") continue;
+        const imageIndex = Number.isFinite(Number(seg.batch_index)) ? Number(seg.batch_index) : idx;
+        if (!imageUrls[imageIndex]) continue;
+        if (seg.imageB64 !== imageUrls[imageIndex] || seg.storyboardPreviewKey !== sourceKey) {
+          seg.imageB64 = imageUrls[imageIndex];
+          seg.storyboardPreviewKey = sourceKey;
+          changed = true;
+        }
+      }
+      if (changed) {
+        this.loadImages();
+        this.commitChanges(true);
+        this.render();
+      }
+      return changed;
+    } catch (err) {
+      console.warn("[LTX Six Grid Director] Could not refresh six-grid preview images:", err);
+      return false;
+    }
   }
 
   async syncPromptsFromText(text, { preserveManual = true, createMissing = true } = {}) {
@@ -4428,9 +4478,9 @@ const APPENDED_WIDGET_DEFAULTS = [
 ];
 
 app.registerExtension({
-  name: "LTXDirector",
+  name: "CS-LTXDirector",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
-    if (nodeData.name === "LTXDirector" || SIX_GRID_NODE_TYPES.includes(nodeData.name)) {
+    if (nodeData.name === "CS-LTXDirector" || SIX_GRID_NODE_TYPES.includes(nodeData.name)) {
 
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {

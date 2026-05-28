@@ -382,9 +382,9 @@ class LTXAutoDirector(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(
-            node_id="LTXAutoDirector",
-            display_name="LTX \u81ea\u52a8\u5bfc\u6f14\u53f0",
-            category="WhatDreamsCost",
+            node_id="CS-LTXAutoDirector",
+            display_name="CS-LTX \u81ea\u52a8\u5bfc\u6f14\u53f0",
+            category="CS-WhatDreamsCost",
             description=(
                 "Builds an LTX Director timeline automatically from a batch of storyboard images "
                 "and an LLM response containing per-shot prompts."
@@ -535,9 +535,9 @@ class LTXAutoDirector(io.ComfyNode):
 
 
 NODE_CLASS_MAPPINGS = {
-    "LTXAutoDirector": LTXAutoDirector,
+    "CS-LTXAutoDirector": LTXAutoDirector,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "LTXAutoDirector": "LTX Auto Director",
+    "CS-LTXAutoDirector": "CS LTX Auto Director",
 }

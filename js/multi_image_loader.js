@@ -2,9 +2,9 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
 app.registerExtension({
-    name: "Comfy.MultiImageLoader",
+    name: "Comfy.CS-MultiImageLoader",
     async nodeCreated(node) {
-        if (node.comfyClass !== "MultiImageLoader") return;
+        if (node.comfyClass !== "CS-MultiImageLoader") return;
 
         // Helper to detect if we are in the new Nodes 2.0 / V3 Web Component frontend
         let v3NodeElement = null;

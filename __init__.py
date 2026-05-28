@@ -11,47 +11,48 @@ from .ltx_director_guide import LTXDirectorGuide
 from comfy_api.latest import ComfyExtension, io
 from typing_extensions import override
 
-class PromptRelay(ComfyExtension):
+
+class CSWhatDreamsCostExtension(ComfyExtension):
     @override
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         return [
             LTXDirector,
             LTXAutoDirector,
             LTXSixGridDirector,
-            LTXDirectorGuide
+            LTXDirectorGuide,
         ]
 
-async def comfy_entrypoint() -> PromptRelay:
-    return PromptRelay()
-    
+
+async def comfy_entrypoint() -> CSWhatDreamsCostExtension:
+    return CSWhatDreamsCostExtension()
+
+
 NODE_CLASS_MAPPINGS = {
-    "LTXKeyframer": LTXKeyframer,
-    "MultiImageLoader": MultiImageLoader,
-    "LTXSequencer": LTXSequencer,
-    "SpeechLengthCalculator": SpeechLengthCalculator,
-    "LoadAudioUI": LoadAudioUI,
-    "LoadVideoUI": LoadVideoUI,
-    "LTXDirector": LTXDirector,
-    "LTXAutoDirector": LTXAutoDirector,
+    "CS-LTXKeyframer": LTXKeyframer,
+    "CS-MultiImageLoader": MultiImageLoader,
+    "CS-LTXSequencer": LTXSequencer,
+    "CS-SpeechLengthCalculator": SpeechLengthCalculator,
+    "CS-LoadAudioUI": LoadAudioUI,
+    "CS-LoadVideoUI": LoadVideoUI,
+    "CS-LTXDirector": LTXDirector,
+    "CS-LTXAutoDirector": LTXAutoDirector,
     "CS-LTXSixGridDirector": LTXSixGridDirector,
-    "LTXSixGridDirector": LTXSixGridDirector,
-    "LTXDirectorGuide": LTXDirectorGuide,
+    "CS-LTXDirectorGuide": LTXDirectorGuide,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "LTXKeyframer": "LTX Keyframer",
-    "MultiImageLoader": "Multi Image Loader",
-    "LTXSequencer": "LTX Sequencer",
-    "SpeechLengthCalculator": "Speech Length Calculator",
-    "LoadAudioUI": "Load Audio UI",
-    "LoadVideoUI": "Load Video UI",
-    "LTXDirector": "LTX Director",
-    "LTXAutoDirector": "LTX Auto Director",
+    "CS-LTXKeyframer": "CS LTX Keyframer",
+    "CS-MultiImageLoader": "CS Multi Image Loader",
+    "CS-LTXSequencer": "CS LTX Sequencer",
+    "CS-SpeechLengthCalculator": "CS Speech Length Calculator",
+    "CS-LoadAudioUI": "CS Load Audio UI",
+    "CS-LoadVideoUI": "CS Load Video UI",
+    "CS-LTXDirector": "CS LTX Director",
+    "CS-LTXAutoDirector": "CS LTX Auto Director",
     "CS-LTXSixGridDirector": "CS-LTX \u516d\u5bab\u683c\u5bfc\u6f14\u53f0",
-    "LTXSixGridDirector": "LTX \u516d\u5bab\u683c\u5bfc\u6f14\u53f0",
-    "LTXDirectorGuide": "LTX Director Guide",
+    "CS-LTXDirectorGuide": "CS LTX Director Guide",
 }
 
 WEB_DIRECTORY = "./js"
 
-__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']
+__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]

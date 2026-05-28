@@ -26,7 +26,7 @@ class MultiImageLoader:
     RETURN_TYPES = ("IMAGE",) * 51
     RETURN_NAMES = ("multi_output",) + tuple(f"image_{i+1}" for i in range(50))
     FUNCTION = "load_images"
-    CATEGORY = "WhatDreamsCost"
+    CATEGORY = "CS-WhatDreamsCost"
 
     def resize_image(self, image, width, height, resize_method="keep proportion", interpolation="nearest", multiple_of=0):
         MAX_RESOLUTION = 8192
@@ -168,7 +168,7 @@ class MultiImageLoader:
             if all_same_shape:
                 multi_output = torch.cat(results, dim=0)
             else:
-                print("MultiImageLoader Warning: Images have different dimensions due to resize settings. Cannot batch into multi_output. Outputting zero tensor for the batch, but individual output nodes will still work fine.")
+                print("CS-MultiImageLoader Warning: Images have different dimensions due to resize settings. Cannot batch into multi_output. Outputting zero tensor for the batch, but individual output nodes will still work fine.")
                 multi_output = torch.zeros((1, 64, 64, 3))
         else:
             # Fallback empty tensor if no valid paths

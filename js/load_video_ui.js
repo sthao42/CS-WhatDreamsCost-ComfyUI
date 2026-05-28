@@ -2,9 +2,9 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
 app.registerExtension({
-    name: "Comfy.LoadVideoUI",
+    name: "Comfy.CS-LoadVideoUI",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        if (nodeData.name === "LoadVideoUI") {
+        if (nodeData.name === "CS-LoadVideoUI") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             const onConfigure = nodeType.prototype.onConfigure;
             const onResize = nodeType.prototype.onResize;

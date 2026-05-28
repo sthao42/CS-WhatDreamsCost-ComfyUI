@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 
-// Global registry to track all LTXKeyframer nodes across all subgraphs
-window._LTXKeyframerGlobalNodes = window._LTXKeyframerGlobalNodes || new Set();
+// Global registry to track all CS-LTXKeyframer nodes across all subgraphs
+window._CSLTXKeyframerGlobalNodes = window._CSLTXKeyframerGlobalNodes || new Set();
 
 // ComfyUI native trick to cleanly hide/show widgets without deleting them
 function toggleWidget(widget, visible) {
@@ -23,12 +23,12 @@ function toggleWidget(widget, visible) {
 }
 
 // --- NEW SYNC HELPER FUNCTION ---
-// Finds all other LTXKeyframer nodes globally and mirrors the value to them
+// Finds all other CS-LTXKeyframer nodes globally and mirrors the value to them
 function syncWidgetAcrossNodes(sourceNode, widgetName, value) {
-    if (!window._LTXKeyframerGlobalNodes) return;
+    if (!window._CSLTXKeyframerGlobalNodes) return;
     
-    for (const targetNode of window._LTXKeyframerGlobalNodes) {
-        // Target all OTHER LTXKeyframer nodes by direct object reference
+    for (const targetNode of window._CSLTXKeyframerGlobalNodes) {
+        // Target all OTHER CS-LTXKeyframer nodes by direct object reference
         if (targetNode !== sourceNode) {
             
             // 1. Always update the hidden properties cache so it remembers the sync 
@@ -48,12 +48,12 @@ function syncWidgetAcrossNodes(sourceNode, widgetName, value) {
 }
 
 app.registerExtension({
-    name: "Comfy.LTXKeyframer.DynamicInputs",
+    name: "Comfy.CS-LTXKeyframer.DynamicInputs",
     async nodeCreated(node) {
-        if (node.comfyClass !== "LTXKeyframer") return;
+        if (node.comfyClass !== "CS-LTXKeyframer") return;
 
         // Register this node instance globally
-        window._LTXKeyframerGlobalNodes.add(node);
+        window._CSLTXKeyframerGlobalNodes.add(node);
 
         node._currentImageCount = -1; // Force first update
 
@@ -278,7 +278,7 @@ app.registerExtension({
             this._applyWidgetCount(count);
         };
 
-        // Helper: read image count from a connected MultiImageLoader node
+        // Helper: read image count from a connected CS-MultiImageLoader node
         function readSourceImageCount(self) {
             const multiInput = self.inputs?.find(inp => inp.name === "multi_input");
             if (!multiInput || !multiInput.link) return null;
@@ -296,7 +296,7 @@ app.registerExtension({
                 const originNode = graph.getNodeById(link.origin_id);
                 if (!originNode) return null;
 
-                if (originNode.comfyClass === "MultiImageLoader") {
+                if (originNode.comfyClass === "CS-MultiImageLoader") {
                     return originNode;
                 }
 
@@ -311,7 +311,7 @@ app.registerExtension({
                 if (typeof originNode.getInnerNode === "function") {
                     try {
                         const innerNode = originNode.getInnerNode(link.origin_slot);
-                        if (innerNode && innerNode.comfyClass === "MultiImageLoader") {
+                        if (innerNode && innerNode.comfyClass === "CS-MultiImageLoader") {
                             return innerNode;
                         }
                     } catch (e) {
@@ -340,12 +340,12 @@ app.registerExtension({
 
             // Fallback Strategy: If it is connected to something, but we couldn't resolve it
             // directly (e.g. complex nested 3rd party subgraphs), scan the entire UI.
-            // If there is EXACTLY ONE MultiImageLoader in the workspace, safely assume that's the one.
+            // If there is EXACTLY ONE CS-MultiImageLoader in the workspace, safely assume that's the one.
             let multiImageLoaders = [];
             function findAllLoaders(nodes) {
                 if (!nodes) return;
                 for (let n of nodes) {
-                    if (n.comfyClass === "MultiImageLoader") {
+                    if (n.comfyClass === "CS-MultiImageLoader") {
                         multiImageLoaders.push(n);
                     }
                     if (n.subgraph && n.subgraph._nodes) {
@@ -380,7 +380,7 @@ app.registerExtension({
         const origOnRemoved = node.onRemoved;
         node.onRemoved = function() {
             // Unregister this node instance
-            window._LTXKeyframerGlobalNodes.delete(node);
+            window._CSLTXKeyframerGlobalNodes.delete(node);
             
             clearInterval(pollInterval);
             if (origOnRemoved) origOnRemoved.apply(this, arguments);

@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 
-// Global registry to track all LTXSequencer nodes across all subgraphs
-window._LTXSequencerGlobalNodes = window._LTXSequencerGlobalNodes || new Set();
+// Global registry to track all CS-LTXSequencer nodes across all subgraphs
+window._CSLTXSequencerGlobalNodes = window._CSLTXSequencerGlobalNodes || new Set();
 
 // ComfyUI native trick to cleanly hide/show widgets without deleting them
 function toggleWidget(widget, visible) {
@@ -28,9 +28,9 @@ function toggleWidget(widget, visible) {
  * to ensure no values are ever lost during subgraph transitions or deletions.
  */
 function syncFullStateAcrossNodes(sourceNode) {
-    if (!window._LTXSequencerGlobalNodes) return;
+    if (!window._CSLTXSequencerGlobalNodes) return;
     
-    for (const targetNode of window._LTXSequencerGlobalNodes) {
+    for (const targetNode of window._CSLTXSequencerGlobalNodes) {
         if (targetNode === sourceNode) continue;
 
         // 1. Mirror the properties object completely
@@ -67,12 +67,12 @@ function syncFullStateAcrossNodes(sourceNode) {
 }
 
 app.registerExtension({
-    name: "Comfy.LTXSequencer.DynamicInputs",
+    name: "Comfy.CS-LTXSequencer.DynamicInputs",
     async nodeCreated(node) {
-        if (node.comfyClass !== "LTXSequencer") return;
+        if (node.comfyClass !== "CS-LTXSequencer") return;
 
         // Register this node instance globally
-        window._LTXSequencerGlobalNodes.add(node);
+        window._CSLTXSequencerGlobalNodes.add(node);
 
         node._currentImageCount = -1; // Force first update
 
@@ -321,14 +321,14 @@ app.registerExtension({
                 if (!link) return null;
                 const originNode = graph.getNodeById(link.origin_id);
                 if (!originNode) return null;
-                if (originNode.comfyClass === "MultiImageLoader") return originNode;
+                if (originNode.comfyClass === "CS-MultiImageLoader") return originNode;
                 if (originNode.type === "Reroute" || originNode.comfyClass === "Reroute") {
                     if (originNode.inputs?.[0]?.link) return traceUpstream(graph, originNode.inputs[0].link, visited);
                 }
                 if (typeof originNode.getInnerNode === "function") {
                     try {
                         const innerNode = originNode.getInnerNode(link.origin_slot);
-                        if (innerNode?.comfyClass === "MultiImageLoader") return innerNode;
+                        if (innerNode?.comfyClass === "CS-MultiImageLoader") return innerNode;
                     } catch (e) {}
                 }
                 return null;
@@ -347,7 +347,7 @@ app.registerExtension({
             function findAllLoaders(nodes) {
                 if (!nodes) return;
                 for (let n of nodes) {
-                    if (n.comfyClass === "MultiImageLoader") multiImageLoaders.push(n);
+                    if (n.comfyClass === "CS-MultiImageLoader") multiImageLoaders.push(n);
                     if (n.subgraph?._nodes) findAllLoaders(n.subgraph._nodes);
                 }
             }
@@ -370,7 +370,7 @@ app.registerExtension({
 
         const origOnRemoved = node.onRemoved;
         node.onRemoved = function() {
-            window._LTXSequencerGlobalNodes.delete(node);
+            window._CSLTXSequencerGlobalNodes.delete(node);
             clearInterval(pollInterval);
             if (origOnRemoved) origOnRemoved.apply(this, arguments);
         };

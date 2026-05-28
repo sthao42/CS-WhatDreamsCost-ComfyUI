@@ -2,9 +2,9 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
 app.registerExtension({
-    name: "Comfy.LoadAudioUI",
+    name: "Comfy.CS-LoadAudioUI",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        if (nodeData.name === "LoadAudioUI") {
+        if (nodeData.name === "CS-LoadAudioUI") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             const onDrawBackground = nodeType.prototype.onDrawBackground;
             
