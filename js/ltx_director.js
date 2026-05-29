@@ -9,6 +9,7 @@ const CANVAS_HEIGHT = RULER_HEIGHT + BLOCK_HEIGHT + AUDIO_TRACK_HEIGHT;
 const HANDLE_HIT_PX = 14;
 const MIN_SEGMENT_LENGTH = 6;
 const MAX_THUMBNAIL_DIM = 512; // Increased to maintain quality for taller images
+const SIX_GRID_PREVIEW_MAX_DIM = 384;
 
 const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths", "guide_strength", "audio_data", "use_custom_audio"];
 
@@ -754,6 +755,28 @@ function prGetConnectedInputText(node, inputName, fallback = "") {
   return prTextValue(fallback);
 }
 
+function prCloneTimelineForPreview(segments = []) {
+  return (segments || []).map((seg) => {
+    const {
+      imgObj,
+      imageB64,
+      audioBuffer,
+      audioB64,
+      decodedAudioBuffer,
+      ...rest
+    } = seg || {};
+    return { ...rest };
+  });
+}
+
+function prSegmentForTimelineSave(seg = {}) {
+  const { imgObj, ...rest } = seg;
+  if (rest.source === "storyboard_images") {
+    delete rest.imageB64;
+  }
+  return rest;
+}
+
 function prNormalizeImageWidgetValue(value) {
   if (!value) return { filename: "", subfolder: "", type: "" };
   if (typeof value === "object") {
@@ -1074,12 +1097,15 @@ async function prCropSixGridToDataUrls(source) {
     const x1 = Math.round((col + 1) * img.naturalWidth / source.cols);
     const y0 = Math.round(row * img.naturalHeight / source.rows);
     const y1 = Math.round((row + 1) * img.naturalHeight / source.rows);
+    const cropW = Math.max(1, x1 - x0);
+    const cropH = Math.max(1, y1 - y0);
+    const scale = Math.min(1, SIX_GRID_PREVIEW_MAX_DIM / Math.max(cropW, cropH));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, x1 - x0);
-    canvas.height = Math.max(1, y1 - y0);
+    canvas.width = Math.max(1, Math.round(cropW * scale));
+    canvas.height = Math.max(1, Math.round(cropH * scale));
     const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, x0, y0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
-    urls.push(canvas.toDataURL("image/png"));
+    ctx.drawImage(img, x0, y0, cropW, cropH, 0, 0, canvas.width, canvas.height);
+    urls.push(canvas.toDataURL("image/jpeg", 0.82));
   }
   return urls;
 }
@@ -1681,7 +1707,7 @@ class TimelineEditor {
       if (!this._ghostSegmentId || this._ghostTrack !== trackType) {
         this._ghostSegmentId = "GHOST_" + Date.now();
         this._ghostTrack = trackType;
-        this._ghostInitialTimeline = JSON.parse(JSON.stringify(arrToModify));
+        this._ghostInitialTimeline = prCloneTimelineForPreview(arrToModify);
 
         const frameRate = this.getFrameRate();
         const newLength = Math.max(1, frameRate * 1);
@@ -3202,7 +3228,7 @@ class TimelineEditor {
     this._isDragging = true;
     this._previewSegments = null;
     this._dragStartX = x;
-    this._dragInitialTimeline = JSON.parse(JSON.stringify(targetArray));
+    this._dragInitialTimeline = prCloneTimelineForPreview(targetArray);
 
     if (hit.type !== "joint") {
       this._dragTargetId = targetArray[hit.index].id;
@@ -3334,7 +3360,7 @@ class TimelineEditor {
     const durationFrames = totalFrames;
     const dragDelta = Math.round((mouseX - this._dragStartX) * (totalFrames / logicalWidth));
 
-    let t = JSON.parse(JSON.stringify(this._dragInitialTimeline));
+    let t = prCloneTimelineForPreview(this._dragInitialTimeline);
 
     // --- Rolling Edit (Slide Edit) ---
     if (this._dragType === "joint") {
@@ -3414,7 +3440,7 @@ class TimelineEditor {
         let initT = this._dragInitialTimeline;
         let dIdx = initT.findIndex(s => s.id === this._dragTargetId);
         if (dIdx < 0) return;
-        let D = JSON.parse(JSON.stringify(initT[dIdx]));
+        let D = { ...initT[dIdx] };
 
         let D_mouse_start = D.start + dragDelta;
         let mouseFrameX = mouseX * (totalFrames / logicalWidth);
@@ -3429,7 +3455,7 @@ class TimelineEditor {
   }
 
   _applyCenterDragPhysics(initT, D_id, D_mouse_start, mouseFrameX, durationFrames, totalFrames, logicalWidth) {
-    let t_copy = JSON.parse(JSON.stringify(initT));
+    let t_copy = prCloneTimelineForPreview(initT);
     let dIdx = t_copy.findIndex(s => s.id === D_id);
     if (dIdx < 0) return t_copy;
 
@@ -3584,10 +3610,7 @@ class TimelineEditor {
     }
 
     const toSave = {
-      segments: sortedSegments.map(s => {
-        const { imgObj, ...rest } = s;
-        return rest;
-      }),
+      segments: sortedSegments.map(prSegmentForTimelineSave),
       audioSegments: (this.timeline.audioSegments || []).map(s => ({ ...s }))
     };
 

@@ -71,10 +71,16 @@ You can also install it through ComfyUI Manager after the package is available t
 
 **Important**
 
-If you don't see the latest version (v1.4.1) yet in the manager then just downloaded the nightly version (or fetch the updates to update the list to see the latest version). 
+If you don't see the latest version (v1.4.2) yet in the manager then just downloaded the nightly version (or fetch the updates to update the list to see the latest version). 
 Also you will need to update ComfyUI-LTXVideo and ComfyUI-KJNodes to the latest version as well. You cannot use this node without updating ComfyUI-LTXVideo!
 
 # Recent Updates
+
+**v1.4.2**
+  * **RunningHub timeline performance fix**
+    - Six-grid previews are now stored as lightweight front-end cache instead of being written into `timeline_data`.
+    - Drag and resize operations no longer deep-copy base64 image/audio payloads.
+    - Six-grid preview crops are downscaled and JPEG-compressed for smoother timeline interaction.
 
 **v1.4.1**
   * **RunningHub frontend sync fix**
