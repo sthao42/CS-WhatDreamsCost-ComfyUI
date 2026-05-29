@@ -71,10 +71,15 @@ You can also install it through ComfyUI Manager after the package is available t
 
 **Important**
 
-If you don't see the latest version (v1.4.0) yet in the manager then just downloaded the nightly version (or fetch the updates to update the list to see the latest version). 
+If you don't see the latest version (v1.4.1) yet in the manager then just downloaded the nightly version (or fetch the updates to update the list to see the latest version). 
 Also you will need to update ComfyUI-LTXVideo and ComfyUI-KJNodes to the latest version as well. You cannot use this node without updating ComfyUI-LTXVideo!
 
 # Recent Updates
+
+**v1.4.1**
+  * **RunningHub frontend sync fix**
+    - The six-grid director now reads connected LLM text from upstream text display nodes, such as `showAnything`, instead of relying only on the local `llm_response` widget.
+    - The timeline polls the connected text source and syncs updated shot prompts into the front-end editor automatically.
 
 **v1.4.0 CS fork**
   * **New node: CS-LTX Six-Grid Director / CS-LTX 六宫格导演台**

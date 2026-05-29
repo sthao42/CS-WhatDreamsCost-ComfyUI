@@ -687,6 +687,73 @@ function prGetWidgetValueAny(node, names, index, fallback = "") {
   return fallback;
 }
 
+function prTextValue(value) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return "";
+  try {
+    return JSON.stringify(value);
+  } catch (_) {
+    return String(value || "").trim();
+  }
+}
+
+function prReadWidgetTextByName(node, names = []) {
+  const wanted = new Set(names.map((name) => String(name).toLowerCase()));
+  for (const widget of node?.widgets || []) {
+    const name = String(widget?.name || "").toLowerCase();
+    const label = String(widget?.label || "").toLowerCase();
+    if (!wanted.has(name) && !wanted.has(label)) continue;
+    const text = prTextValue(widget.value);
+    if (text) return text;
+  }
+  return "";
+}
+
+function prReadSerializedWidgetText(node, index = 0) {
+  const serializedValues = node?.widgets_values || node?.widgetsValues || node?.widget_values;
+  if (!Array.isArray(serializedValues)) return "";
+  return prTextValue(serializedValues[index]);
+}
+
+function prLooksLikeTextDisplayNode(node) {
+  const nodeType = String(node?.type || node?.comfyClass || "").toLowerCase();
+  const title = String(node?.title || node?.properties?.["Node name for S&R"] || "").toLowerCase();
+  const combined = `${nodeType} ${title}`;
+  return /(show|display|preview|anything|note|text|string)/i.test(combined);
+}
+
+function prReadTextFromConnectedNode(node) {
+  if (!node) return "";
+  const preferredNames = [
+    "output", "text", "string", "strings", "response", "result", "message",
+    "anything", "value", "\u8f93\u51fa", "\u6587\u672c", "\u5185\u5bb9", "\u7ed3\u679c",
+  ];
+  const namedText = prReadWidgetTextByName(node, preferredNames);
+  if (namedText) return namedText;
+
+  if (prLooksLikeTextDisplayNode(node)) {
+    for (const widget of node.widgets || []) {
+      const text = prTextValue(widget?.value);
+      if (text) return text;
+    }
+    const serializedText = prReadSerializedWidgetText(node, 0);
+    if (serializedText) return serializedText;
+  }
+  return "";
+}
+
+function prGetConnectedInputText(node, inputName, fallback = "") {
+  const origin = prGetOriginNode(node, inputName);
+  const originText = prReadTextFromConnectedNode(origin);
+  if (originText) return originText;
+
+  const direct = prTextValue(prGetWidgetValue(node, inputName, ""));
+  if (direct) return direct;
+
+  return prTextValue(fallback);
+}
+
 function prNormalizeImageWidgetValue(value) {
   if (!value) return { filename: "", subfolder: "", type: "" };
   if (typeof value === "object") {
@@ -1111,7 +1178,8 @@ class TimelineEditor {
     this.guideStrengthWidget = this.node.widgets.find(w => w.name === "guide_strength");
     this.displayModeWidget = this.node.widgets.find(w => w.name === "display_mode");
     this.llmResponseWidget = this.node.widgets.find(w => w.name === "llm_response");
-    this._lastLLMResponse = String(this.llmResponseWidget?.value || "");
+    this._lastLLMResponse = this.getCurrentLLMText();
+    this._lastLLMCheck = 0;
     this._lastSixGridSourceKey = "";
     this._lastSixGridCheck = 0;
     this._sixGridRefreshInFlight = false;
@@ -1234,6 +1302,22 @@ class TimelineEditor {
     this._lastLLMResponse = cleanText;
     if (this.llmResponseWidget) this.llmResponseWidget.value = cleanText;
     this.syncPromptsFromText(cleanText, { preserveManual: true, createMissing: true });
+  }
+
+  getCurrentLLMText() {
+    if (!prIsSixGridDirector(this.node)) return String(this.llmResponseWidget?.value || "");
+    return prGetConnectedInputText(this.node, "llm_response", this._lastLLMResponse || "");
+  }
+
+  checkConnectedLLMTextChange() {
+    if (!prIsSixGridDirector(this.node)) return;
+    const now = performance.now ? performance.now() : Date.now();
+    if (now - this._lastLLMCheck < 1000) return;
+    this._lastLLMCheck = now;
+
+    const text = this.getCurrentLLMText();
+    if (!text || text === this._lastLLMResponse) return;
+    this.receiveLLMResponseText(text);
   }
 
   getDurationFrames() {
@@ -1902,6 +1986,7 @@ class TimelineEditor {
     const viewportWidth = this.viewport.clientWidth;
     const currentScale = this.getRenderScale();
     this.checkSixGridSourceChange();
+    this.checkConnectedLLMTextChange();
 
     if (viewportWidth > 0 && (this._lastWidth !== viewportWidth || this._lastZoom !== this.zoomLevel || this._lastScale !== currentScale)) {
       this._lastWidth = viewportWidth;
@@ -2199,7 +2284,8 @@ class TimelineEditor {
     const maxFromGrid = source ? Math.min(SIX_GRID_MAX_SEGMENTS, source.cols * source.rows) : SIX_GRID_MAX_SEGMENTS;
     const count = Math.max(1, maxFromGrid);
     const lengths = prResolveSegmentLengths(this.node, count, ignoreManualLengths);
-    const prompts = prParsePrompts(prGetWidgetValue(this.node, "llm_response", ""));
+    const promptText = this.getCurrentLLMText();
+    const prompts = prParsePrompts(promptText);
     let imageUrls = [];
 
     try {
@@ -2306,7 +2392,7 @@ class TimelineEditor {
   }
 
   syncPromptsFromCurrentLLM() {
-    const text = String(this.llmResponseWidget?.value || this._lastLLMResponse || "");
+    const text = this.getCurrentLLMText();
     return this.syncPromptsFromText(text, { preserveManual: true, createMissing: true });
   }
 
