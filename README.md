@@ -71,10 +71,16 @@ You can also install it through ComfyUI Manager after the package is available t
 
 **Important**
 
-If you don't see the latest version (v1.4.2) yet in the manager then just downloaded the nightly version (or fetch the updates to update the list to see the latest version). 
+If you don't see the latest version (v1.4.3) yet in the manager then just downloaded the nightly version (or fetch the updates to update the list to see the latest version). 
 Also you will need to update ComfyUI-LTXVideo and ComfyUI-KJNodes to the latest version as well. You cannot use this node without updating ComfyUI-LTXVideo!
 
 # Recent Updates
+
+**v1.4.3**
+  * **Lean six-grid preview rendering**
+    - Six-grid storyboard thumbnails are now drawn directly from one shared source image during canvas rendering.
+    - The node no longer creates six cropped base64 preview images for automatic storyboard segments.
+    - Old storyboard `imageB64` payloads are stripped when timelines are loaded and re-saved.
 
 **v1.4.2**
   * **RunningHub timeline performance fix**

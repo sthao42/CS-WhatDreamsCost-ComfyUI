@@ -9,7 +9,6 @@ const CANVAS_HEIGHT = RULER_HEIGHT + BLOCK_HEIGHT + AUDIO_TRACK_HEIGHT;
 const HANDLE_HIT_PX = 14;
 const MIN_SEGMENT_LENGTH = 6;
 const MAX_THUMBNAIL_DIM = 512; // Increased to maintain quality for taller images
-const SIX_GRID_PREVIEW_MAX_DIM = 384;
 
 const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths", "guide_strength", "audio_data", "use_custom_audio"];
 
@@ -1085,31 +1084,6 @@ function prSixGridSourceKey(source) {
   return `${source.cols || 3}x${source.rows || 2}|${source.url}`;
 }
 
-async function prCropSixGridToDataUrls(source) {
-  if (!source?.url) return [];
-  const img = await prImageFromUrl(source.url);
-  const urls = [];
-  const count = Math.min(SIX_GRID_MAX_SEGMENTS, source.cols * source.rows);
-  for (let idx = 0; idx < count; idx++) {
-    const col = idx % source.cols;
-    const row = Math.floor(idx / source.cols);
-    const x0 = Math.round(col * img.naturalWidth / source.cols);
-    const x1 = Math.round((col + 1) * img.naturalWidth / source.cols);
-    const y0 = Math.round(row * img.naturalHeight / source.rows);
-    const y1 = Math.round((row + 1) * img.naturalHeight / source.rows);
-    const cropW = Math.max(1, x1 - x0);
-    const cropH = Math.max(1, y1 - y0);
-    const scale = Math.min(1, SIX_GRID_PREVIEW_MAX_DIM / Math.max(cropW, cropH));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(cropW * scale));
-    canvas.height = Math.max(1, Math.round(cropH * scale));
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, x0, y0, cropW, cropH, 0, 0, canvas.width, canvas.height);
-    urls.push(canvas.toDataURL("image/jpeg", 0.82));
-  }
-  return urls;
-}
-
 // --- Data Models ---
 function parseInitial(jsonStr) {
   let parsed = { segments: [], audioSegments: [] };
@@ -1130,6 +1104,10 @@ function parseInitial(jsonStr) {
     // Guarantee ID assignment to prevent node loading drag breaks
     if (!seg.id) {
       seg.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+    }
+    if (seg.source === "storyboard_images") {
+      delete seg.imageB64;
+      delete seg.imgObj;
     }
   }
 
@@ -1209,6 +1187,10 @@ class TimelineEditor {
     this._lastSixGridSourceKey = "";
     this._lastSixGridCheck = 0;
     this._sixGridRefreshInFlight = false;
+    this._sixGridPreviewImage = null;
+    this._sixGridPreviewSource = null;
+    this._sixGridPreviewSourceKey = "";
+    this._sixGridPreviewLoad = null;
 
     this.timeline = parseInitial(this.timelineDataWidget?.value);
     this.loadImages();
@@ -2036,6 +2018,8 @@ class TimelineEditor {
     const sourceKey = prSixGridSourceKey(source);
     if (!sourceKey) return;
 
+    this.ensureSixGridPreviewImage(source, sourceKey);
+
     const hasStoryboardSegments = this.timeline.segments.some((seg) => seg?.source === "storyboard_images");
     if (!hasStoryboardSegments) {
       this._lastSixGridSourceKey = sourceKey;
@@ -2043,8 +2027,7 @@ class TimelineEditor {
     }
 
     const stalePreview = this.timeline.segments.some((seg) => (
-      seg?.source === "storyboard_images" &&
-      (!seg.imageB64 || seg.storyboardPreviewKey !== sourceKey)
+      seg?.source === "storyboard_images" && seg.storyboardPreviewKey !== sourceKey
     ));
     if (!stalePreview && this._lastSixGridSourceKey === sourceKey) return;
 
@@ -2053,6 +2036,39 @@ class TimelineEditor {
     this.refreshSixGridPreviews(source, sourceKey).finally(() => {
       this._sixGridRefreshInFlight = false;
     });
+  }
+
+  async ensureSixGridPreviewImage(source = null, sourceKey = "") {
+    if (!prIsSixGridDirector(this.node)) return null;
+    source = source || prGetSixGridSource(this.node);
+    sourceKey = sourceKey || prSixGridSourceKey(source);
+    if (!source?.url || !sourceKey) return null;
+    if (this._sixGridPreviewImage && this._sixGridPreviewSourceKey === sourceKey) return this._sixGridPreviewImage;
+    if (this._sixGridPreviewLoad && this._sixGridPreviewSourceKey === sourceKey) return this._sixGridPreviewLoad;
+
+    this._sixGridPreviewSourceKey = sourceKey;
+    this._sixGridPreviewSource = source;
+    this._sixGridPreviewImage = null;
+    this._sixGridPreviewLoad = prImageFromUrl(source.url)
+      .then((img) => {
+        if (this._sixGridPreviewSourceKey === sourceKey) {
+          this._sixGridPreviewImage = img;
+          this._sixGridPreviewSource = source;
+          this.render();
+        }
+        return img;
+      })
+      .catch((err) => {
+        if (this._sixGridPreviewSourceKey === sourceKey) {
+          this._sixGridPreviewImage = null;
+        }
+        console.warn("[LTX Six Grid Director] Could not load six-grid preview image:", err);
+        return null;
+      })
+      .finally(() => {
+        if (this._sixGridPreviewSourceKey === sourceKey) this._sixGridPreviewLoad = null;
+      });
+    return this._sixGridPreviewLoad;
   }
 
   getRenderScale() {
@@ -2312,13 +2328,8 @@ class TimelineEditor {
     const lengths = prResolveSegmentLengths(this.node, count, ignoreManualLengths);
     const promptText = this.getCurrentLLMText();
     const prompts = prParsePrompts(promptText);
-    let imageUrls = [];
 
-    try {
-      imageUrls = await prCropSixGridToDataUrls(source);
-    } catch (err) {
-      console.warn("[LTX Six Grid Director] Could not crop six-grid preview image:", err);
-    }
+    await this.ensureSixGridPreviewImage(source, sourceKey);
 
     let cursor = 0;
     this.timeline.segments = [];
@@ -2336,7 +2347,6 @@ class TimelineEditor {
         batch_index: idx,
         guideStrength: 1.0,
         storyboardPreviewKey: sourceKey,
-        imageB64: imageUrls[idx] || "",
       });
       cursor += length;
     }
@@ -2355,24 +2365,24 @@ class TimelineEditor {
     if (!source?.url || !sourceKey) return false;
 
     try {
-      const imageUrls = await prCropSixGridToDataUrls(source);
+      await this.ensureSixGridPreviewImage(source, sourceKey);
       let changed = false;
       for (let idx = 0; idx < this.timeline.segments.length; idx++) {
         const seg = this.timeline.segments[idx];
         if (!seg || seg.source !== "storyboard_images") continue;
-        const imageIndex = Number.isFinite(Number(seg.batch_index)) ? Number(seg.batch_index) : idx;
-        if (!imageUrls[imageIndex]) continue;
-        if (seg.imageB64 !== imageUrls[imageIndex] || seg.storyboardPreviewKey !== sourceKey) {
-          seg.imageB64 = imageUrls[imageIndex];
+        if (seg.imageB64) {
+          delete seg.imageB64;
+          changed = true;
+        }
+        if (seg.storyboardPreviewKey !== sourceKey) {
           seg.storyboardPreviewKey = sourceKey;
           changed = true;
         }
       }
       if (changed) {
-        this.loadImages();
         this.commitChanges(true);
-        this.render();
       }
+      this.render();
       return changed;
     } catch (err) {
       console.warn("[LTX Six Grid Director] Could not refresh six-grid preview images:", err);
@@ -2542,6 +2552,49 @@ class TimelineEditor {
   }
 
   // --- Rendering logic ---
+  drawSixGridStoryboardSegment(seg, startX, pxWidth) {
+    if (!prIsSixGridDirector(this.node) || seg?.source !== "storyboard_images") return false;
+    const img = this._sixGridPreviewImage;
+    const source = this._sixGridPreviewSource;
+    if (!img || !img.complete || img.naturalWidth <= 0 || !source?.cols || !source?.rows) {
+      this.ensureSixGridPreviewImage();
+      return false;
+    }
+
+    const idx = Number.isFinite(Number(seg.batch_index)) ? Number(seg.batch_index) : 0;
+    const col = idx % source.cols;
+    const row = Math.floor(idx / source.cols);
+    const sx = Math.round(col * img.naturalWidth / source.cols);
+    const sy = Math.round(row * img.naturalHeight / source.rows);
+    const sx2 = Math.round((col + 1) * img.naturalWidth / source.cols);
+    const sy2 = Math.round((row + 1) * img.naturalHeight / source.rows);
+    const sw = Math.max(1, sx2 - sx);
+    const sh = Math.max(1, sy2 - sy);
+    const imgRatio = sw / sh;
+    const boxRatio = pxWidth / this.blockHeight;
+    let drawW, drawH, drawX, drawY;
+
+    if (imgRatio > boxRatio) {
+      drawW = pxWidth;
+      drawH = pxWidth / imgRatio;
+      drawX = startX;
+      drawY = RULER_HEIGHT + (this.blockHeight - drawH) / 2;
+    } else {
+      drawH = this.blockHeight;
+      drawW = this.blockHeight * imgRatio;
+      drawY = RULER_HEIGHT;
+      drawX = startX + (pxWidth - drawW) / 2;
+    }
+
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.rect(startX, RULER_HEIGHT + 1, pxWidth, this.blockHeight - 2);
+    this.ctx.clip();
+    this.ctx.drawImage(img, sx, sy, sw, sh, drawX, drawY, drawW, drawH);
+    this.ctx.restore();
+    return true;
+  }
+
   render() {
     const width = this.canvas.offsetWidth || this._lastWidth;
     const height = this.canvasHeight;
@@ -2629,7 +2682,9 @@ class TimelineEditor {
         this.ctx.fillRect(startX, RULER_HEIGHT + 1, pxWidth, this.blockHeight - 2);
       }
 
-      if (imgObj && imgObj.complete && imgObj.naturalWidth > 0 && seg.type !== "ghost") {
+      if (this.drawSixGridStoryboardSegment(seg, startX, pxWidth)) {
+        // Drawn directly from the shared six-grid source image.
+      } else if (imgObj && imgObj.complete && imgObj.naturalWidth > 0 && seg.type !== "ghost") {
         const imgRatio = imgObj.naturalWidth / imgObj.naturalHeight;
         const boxRatio = pxWidth / this.blockHeight;
         let drawW, drawH, drawX, drawY;
