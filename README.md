@@ -76,6 +76,12 @@ Also you will need to update ComfyUI-LTXVideo and ComfyUI-KJNodes to the latest 
 
 # Recent Updates
 
+**v1.4.4**
+  * **Six-grid source refresh fix**
+    - The six-grid director now rebuilds the six storyboard timeline blocks only when the upstream six-grid image source changes.
+    - Connected `llm_response` text still syncs into the current six blocks, but text changes alone no longer clear the timeline cache.
+    - During execution, storyboard-image segments prefer the current connected `llm_response` prompts, preventing a new six-grid image from accidentally using prompts from the previous run.
+
 **v1.4.3**
   * **Lean six-grid preview rendering**
     - Six-grid storyboard thumbnails are now drawn directly from one shared source image during canvas rendering.
@@ -255,7 +261,13 @@ Overhaul of the load audio node. Features a simple interface to easily trim audi
 - 继续手动添加图像、文本或音频片段；
 - 使用原版 LTX Director 的自定义音频和时间线播放控制。
 
-这些手动修改会写入 `时间线数据` / `timeline_data`。真正运行时，节点会优先使用当前前端时间线里的最终内容。
+这些手动修改会写入 `时间线数据` / `timeline_data`。对于普通手动片段，真正运行时会使用当前前端时间线里的最终内容；对于来自六宫格的自动分镜片段，如果当前连接的 `llm_response` 已经生成了新的 6 段文本，节点会优先使用当前文本，避免沿用上一轮缓存的提示词。
+
+**自动刷新规则：**
+
+六宫格导演台只会在 `六宫格拆分图` / `storyboard_images` 的上游图片来源发生变化时，自动清除上一轮六宫格时间线缓存并重新创建 6 个分镜块。
+
+如果只是 `GPT 分镜文本` / `llm_response` 发生变化，节点会把新文本同步到当前 6 个分镜块里，但不会因为文本变化而清除整条时间线。修改 `总帧数`、`总秒数` 或 `帧率` 也不会触发清缓存。
 
 **LTX 引导尺寸修复：**
 
