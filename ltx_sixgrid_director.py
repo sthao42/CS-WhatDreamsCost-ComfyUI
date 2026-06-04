@@ -130,11 +130,7 @@ def _decode_timeline(timeline_data):
     return data
 
 
-def _prompt_for_segment(seg, index, parsed_prompts):
-    prompt = _to_str(seg.get("prompt")).strip()
-    if prompt:
-        return prompt
-
+def _parsed_prompt_for_segment(seg, index, parsed_prompts):
     batch_index = seg.get("batch_index")
     try:
         batch_index = int(batch_index)
@@ -145,6 +141,20 @@ def _prompt_for_segment(seg, index, parsed_prompts):
         return parsed_prompts[batch_index]
     if index < len(parsed_prompts):
         return parsed_prompts[index]
+    return ""
+
+
+def _prompt_for_segment(seg, index, parsed_prompts):
+    parsed_prompt = _parsed_prompt_for_segment(seg, index, parsed_prompts)
+    if parsed_prompt and seg.get("source") == "storyboard_images":
+        return parsed_prompt
+
+    prompt = _to_str(seg.get("prompt")).strip()
+    if prompt:
+        return prompt
+
+    if parsed_prompt:
+        return parsed_prompt
     return _fallback_prompt(index)
 
 

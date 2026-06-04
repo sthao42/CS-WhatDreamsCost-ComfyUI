@@ -1186,6 +1186,11 @@ class TimelineEditor {
     this._lastLLMCheck = 0;
     this._lastSixGridSourceKey = "";
     this._lastSixGridCheck = 0;
+    this._lastSixGridInputKey = "";
+    this._sixGridAutoRefreshTimer = null;
+    this._sixGridAutoRefreshPending = false;
+    this._sixGridPendingSource = null;
+    this._sixGridPendingSourceKey = "";
     this._sixGridRefreshInFlight = false;
     this._sixGridPreviewImage = null;
     this._sixGridPreviewSource = null;
@@ -1269,6 +1274,7 @@ class TimelineEditor {
   destroy() {
     cancelAnimationFrame(this._renderLoop);
     this.pauseAudio();
+    if (this._sixGridAutoRefreshTimer) clearTimeout(this._sixGridAutoRefreshTimer);
     window.removeEventListener("keydown", this.handleKeyDown, true);
     window.removeEventListener("paste", this.handlePaste, true);
     if (this._onPromptExecuted) api.removeEventListener?.("executed", this._onPromptExecuted);
@@ -2009,7 +2015,7 @@ class TimelineEditor {
   }
 
   checkSixGridSourceChange() {
-    if (!prIsSixGridDirector(this.node) || this._sixGridRefreshInFlight) return;
+    if (!prIsSixGridDirector(this.node)) return;
     const now = performance.now ? performance.now() : Date.now();
     if (now - this._lastSixGridCheck < 1000) return;
     this._lastSixGridCheck = now;
@@ -2019,23 +2025,53 @@ class TimelineEditor {
     if (!sourceKey) return;
 
     this.ensureSixGridPreviewImage(source, sourceKey);
+    this.requestSixGridAutoRefresh("source", source, sourceKey);
+  }
 
-    const hasStoryboardSegments = this.timeline.segments.some((seg) => seg?.source === "storyboard_images");
-    if (!hasStoryboardSegments) {
-      this._lastSixGridSourceKey = sourceKey;
-      return;
+  sixGridInputKey(source = null, sourceKey = "") {
+    source = source || prGetSixGridSource(this.node);
+    sourceKey = sourceKey || prSixGridSourceKey(source);
+    return sourceKey || "";
+  }
+
+  requestSixGridAutoRefresh(reason = "input", source = null, sourceKey = "") {
+    if (!prIsSixGridDirector(this.node)) return false;
+    source = source || prGetSixGridSource(this.node);
+    sourceKey = sourceKey || prSixGridSourceKey(source);
+    if (!sourceKey) return false;
+
+    const inputKey = this.sixGridInputKey(source, sourceKey);
+    if (!inputKey || inputKey === this._lastSixGridInputKey) return false;
+    this._lastSixGridInputKey = inputKey;
+    this._lastSixGridSourceKey = sourceKey;
+
+    if (this._sixGridRefreshInFlight) {
+      this._sixGridAutoRefreshPending = true;
+      this._sixGridPendingSource = source;
+      this._sixGridPendingSourceKey = sourceKey;
+      return true;
     }
 
-    const stalePreview = this.timeline.segments.some((seg) => (
-      seg?.source === "storyboard_images" && seg.storyboardPreviewKey !== sourceKey
-    ));
-    if (!stalePreview && this._lastSixGridSourceKey === sourceKey) return;
-
-    this._lastSixGridSourceKey = sourceKey;
-    this._sixGridRefreshInFlight = true;
-    this.refreshSixGridPreviews(source, sourceKey).finally(() => {
-      this._sixGridRefreshInFlight = false;
-    });
+    if (this._sixGridAutoRefreshTimer) clearTimeout(this._sixGridAutoRefreshTimer);
+    this._sixGridAutoRefreshTimer = setTimeout(async () => {
+      this._sixGridAutoRefreshTimer = null;
+      this._sixGridRefreshInFlight = true;
+      try {
+        await this.autoFillFromSixGrid(false);
+      } finally {
+        this._sixGridRefreshInFlight = false;
+        if (this._sixGridAutoRefreshPending) {
+          const pendingSource = this._sixGridPendingSource;
+          const pendingSourceKey = this._sixGridPendingSourceKey;
+          this._sixGridAutoRefreshPending = false;
+          this._sixGridPendingSource = null;
+          this._sixGridPendingSourceKey = "";
+          this._lastSixGridInputKey = "";
+          this.requestSixGridAutoRefresh(reason, pendingSource || source, pendingSourceKey || sourceKey);
+        }
+      }
+    }, 120);
+    return true;
   }
 
   async ensureSixGridPreviewImage(source = null, sourceKey = "") {
@@ -4702,7 +4738,7 @@ app.registerExtension({
           try {
             self._timelineEditor = new TimelineEditor(self, container, widget);
             if (prIsSixGridDirector(self)) {
-              setTimeout(() => self._timelineEditor?.autoFillFromSixGrid(true), 250);
+              setTimeout(() => self._timelineEditor?.requestSixGridAutoRefresh("init"), 250);
             }
           } catch (err) {
             console.error("[PromptRelay] timeline editor init failed:", err);
