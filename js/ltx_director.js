@@ -10,14 +10,14 @@ const HANDLE_HIT_PX = 14;
 const MIN_SEGMENT_LENGTH = 6;
 const MAX_THUMBNAIL_DIM = 512; // Increased to maintain quality for taller images
 
-const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths", "guide_strength", "audio_data", "use_custom_audio"];
+const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths", "guide_strength", "audio_data", "use_custom_audio", "resize_method"];
 
 const ZH = {
   addImage: "\u6dfb\u52a0\u56fe\u7247",
-  autoFill6: "\u81ea\u52a8\u586b\u5145 6 \u683c",
-  autoFill6Title: "\u4ece\u5df2\u8fde\u63a5\u7684 2x3 \u516d\u5bab\u683c\u5206\u955c\u56fe\u521b\u5efa 6 \u4e2a\u53ef\u7f16\u8f91\u65f6\u95f4\u7ebf\u7247\u6bb5\u3002",
+  autoFillGrid: "\u81ea\u52a8\u586b\u5145\u5bab\u683c",
+  autoFillGridTitle: "\u4ece\u5df2\u8fde\u63a5\u7684\u5bab\u683c\u5206\u955c\u56fe\u521b\u5efa 4/6/9 \u4e2a\u53ef\u7f16\u8f91\u65f6\u95f4\u7ebf\u7247\u6bb5\u3002",
   syncText: "\u540c\u6b65\u6587\u672c",
-  syncTextTitle: "\u5c06\u5df2\u8fd0\u884c\u7684 GPT response \u540c\u6b65\u5230 6 \u4e2a\u5206\u955c\u6587\u672c\uff0c\u4fdd\u7559\u624b\u52a8\u4fee\u6539\u3002",
+  syncTextTitle: "\u5c06\u5df2\u8fd0\u884c\u7684 GPT response \u540c\u6b65\u5230\u5f53\u524d\u5bab\u683c\u5206\u955c\u6587\u672c\uff0c\u4fdd\u7559\u624b\u52a8\u4fee\u6539\u3002",
   addAudio: "\u6dfb\u52a0\u97f3\u9891",
   addText: "\u6dfb\u52a0\u6587\u5b57",
   delete: "\u5220\u9664",
@@ -80,7 +80,10 @@ function prDisplayModeValue(mode) {
 const SIX_GRID_INPUT_LABELS = {
   model: "\u6a21\u578b",
   clip: "\u6587\u672c\u7f16\u7801\u5668",
-  storyboard_images: "\u516d\u5bab\u683c\u62c6\u5206\u56fe",
+  storyboard_images: "\u5bab\u683c\u56fe\u50cf",
+  grid_mode: "\u5bab\u683c\u6a21\u5f0f",
+  shot_aspect: "\u5206\u955c\u6bd4\u4f8b",
+  border_crop: "\u767d\u8fb9\u88c1\u526a\u5f3a\u5ea6",
   llm_response: "GPT \u5206\u955c\u6587\u672c",
   audio_vae: "\u97f3\u9891 VAE",
   optional_latent: "\u53ef\u9009\u6f5c\u7a7a\u95f4",
@@ -114,6 +117,33 @@ const SIX_GRID_OUTPUT_LABELS = {
 };
 
 const SIX_GRID_COMBO_VALUE_LABELS = {
+  grid_mode: {
+    "2x2": "2x2 \u56db\u5bab\u683c",
+    "2x2 \u56db\u5bab\u683c": "2x2 \u56db\u5bab\u683c",
+    "\u56db\u5bab\u683c": "2x2 \u56db\u5bab\u683c",
+    "3x2": "3x2 \u516d\u5bab\u683c",
+    "2x3": "3x2 \u516d\u5bab\u683c",
+    "3x2 \u516d\u5bab\u683c": "3x2 \u516d\u5bab\u683c",
+    "2x3 \u516d\u5bab\u683c": "3x2 \u516d\u5bab\u683c",
+    "\u516d\u5bab\u683c": "3x2 \u516d\u5bab\u683c",
+    "3x3": "3x3 \u4e5d\u5bab\u683c",
+    "3x3 \u4e5d\u5bab\u683c": "3x3 \u4e5d\u5bab\u683c",
+    "\u4e5d\u5bab\u683c": "3x3 \u4e5d\u5bab\u683c",
+  },
+  shot_aspect: {
+    auto: "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b",
+    "\u81ea\u52a8": "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b",
+    "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b": "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b",
+    "16:9": "16:9 \u6a2a\u5c4f",
+    "16:9 \u6a2a\u5c4f": "16:9 \u6a2a\u5c4f",
+    "\u6a2a\u5c4f": "16:9 \u6a2a\u5c4f",
+    "9:16": "9:16 \u7ad6\u5c4f",
+    "9:16 \u7ad6\u5c4f": "9:16 \u7ad6\u5c4f",
+    "\u7ad6\u5c4f": "9:16 \u7ad6\u5c4f",
+    "1:1": "1:1 \u65b9\u56fe",
+    "1:1 \u65b9\u56fe": "1:1 \u65b9\u56fe",
+    "\u65b9\u56fe": "1:1 \u65b9\u56fe",
+  },
   display_mode: {
     seconds: ZH.seconds,
     frames: ZH.frames,
@@ -131,6 +161,14 @@ const SIX_GRID_COMBO_VALUE_LABELS = {
   },
 };
 
+const SIX_GRID_COMBO_CANONICAL_VALUES = {
+  grid_mode: ["2x2 \u56db\u5bab\u683c", "3x2 \u516d\u5bab\u683c", "3x3 \u4e5d\u5bab\u683c"],
+  shot_aspect: ["\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b", "16:9 \u6a2a\u5c4f", "9:16 \u7ad6\u5c4f", "1:1 \u65b9\u56fe"],
+  display_mode: [ZH.seconds, ZH.frames],
+  parse_mode: ["\u81ea\u52a8", "JSON", "\u7f16\u53f7\u6587\u672c"],
+  resize_method: ["\u4fdd\u6301\u6bd4\u4f8b", "\u62c9\u4f38\u586b\u6ee1", "\u7559\u767d\u586b\u5145", "\u88c1\u526a\u586b\u6ee1"],
+};
+
 function hideWidget(w) {
   if (!w) return;
   if (!w._origType && w.type !== "hidden") w._origType = w.type;
@@ -141,6 +179,27 @@ function hideWidget(w) {
   w.options.hidden = true;
   w.computeSize = () => [0, 0];
   if (w.element) w.element.style.display = "none";
+}
+
+function prHideSixGridInternalWidgets(node) {
+  if (!prIsSixGridDirector(node)) return;
+  for (const w of node.widgets || []) {
+    if (HIDDEN_WIDGET_NAMES.includes(w.name)) hideWidget(w);
+  }
+}
+
+function prRepairNumberWidget(node, name, fallback, min = null, max = null, integer = false) {
+  const widget = prGetWidget(node, name);
+  if (!widget) return fallback;
+  let value = Number(widget.value);
+  const invalid =
+    !Number.isFinite(value) ||
+    (min !== null && value < min) ||
+    (max !== null && value > max);
+  if (invalid) value = fallback;
+  if (integer) value = Math.round(value);
+  widget.value = value;
+  return value;
 }
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
@@ -660,7 +719,7 @@ const ICONS = {
   close: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
 };
 
-const SIX_GRID_MAX_SEGMENTS = 6;
+const SIX_GRID_MAX_SEGMENTS = 9;
 
 function prGetWidget(node, name) {
   return node.widgets?.find((w) => w.name === name);
@@ -788,7 +847,8 @@ function prNormalizeImageWidgetValue(value) {
   return { filename: String(value), subfolder: "", type: "" };
 }
 
-const SIX_GRID_NODE_TYPES = ["CS-LTXSixGridDirector"];
+const SIX_GRID_NODE_TYPES = ["CS-LTXGridDirector"];
+const BORDER_CROP_BASE_FRACTION = 0.015;
 
 function prIsSixGridDirector(node) {
   return SIX_GRID_NODE_TYPES.includes(node?.comfyClass) || SIX_GRID_NODE_TYPES.includes(node?.type);
@@ -806,7 +866,7 @@ function prSetLiteGraphLabel(item, label) {
 
 function prApplySixGridChineseLabels(node) {
   if (!prIsSixGridDirector(node)) return;
-  node.title = node.title || "CS-LTX \u516d\u5bab\u683c\u5bfc\u6f14\u53f0";
+  node.title = node.title || "CS-LTX \u5bab\u683c\u5bfc\u6f14\u53f0";
   for (const input of node.inputs || []) {
     prSetLiteGraphLabel(input, SIX_GRID_INPUT_LABELS[input.name]);
   }
@@ -818,7 +878,7 @@ function prApplySixGridChineseLabels(node) {
     const valueLabels = SIX_GRID_COMBO_VALUE_LABELS[widget.name];
     if (valueLabels) {
       if (!widget.options) widget.options = {};
-      widget.options.values = Object.values(valueLabels);
+      widget.options.values = SIX_GRID_COMBO_CANONICAL_VALUES[widget.name] || Array.from(new Set(Object.values(valueLabels)));
       if (Object.prototype.hasOwnProperty.call(valueLabels, widget.value)) {
         widget.value = valueLabels[widget.value];
       }
@@ -829,6 +889,35 @@ function prApplySixGridChineseLabels(node) {
 
 function prRepairSixGridWidgetValues(node) {
   if (!prIsSixGridDirector(node)) return;
+
+  const gridModeWidget = prGetWidget(node, "grid_mode");
+  if (gridModeWidget && !SIX_GRID_COMBO_CANONICAL_VALUES.grid_mode.includes(gridModeWidget.value)) {
+    gridModeWidget.value = SIX_GRID_COMBO_VALUE_LABELS.grid_mode[gridModeWidget.value] || "3x2 \u516d\u5bab\u683c";
+  }
+
+  const shotAspectWidget = prGetWidget(node, "shot_aspect");
+  if (shotAspectWidget && !SIX_GRID_COMBO_CANONICAL_VALUES.shot_aspect.includes(shotAspectWidget.value)) {
+    shotAspectWidget.value = SIX_GRID_COMBO_VALUE_LABELS.shot_aspect[shotAspectWidget.value] || "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b";
+  }
+
+  const resizeMethodWidget = prGetWidget(node, "resize_method");
+  if (resizeMethodWidget && !SIX_GRID_COMBO_CANONICAL_VALUES.resize_method.includes(resizeMethodWidget.value)) {
+    resizeMethodWidget.value = SIX_GRID_COMBO_VALUE_LABELS.resize_method[resizeMethodWidget.value] || "\u4fdd\u6301\u6bd4\u4f8b";
+  }
+
+  const durationFrames = prRepairNumberWidget(node, "duration_frames", 120, 1, 10000, true);
+  const frameRate = prRepairNumberWidget(node, "frame_rate", 24, 1, 240, false);
+
+  const durationSecondsWidget = prGetWidget(node, "duration_seconds");
+  const durationSeconds = Number(durationSecondsWidget?.value);
+  if (durationSecondsWidget && (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || durationSeconds > 1000)) {
+    durationSecondsWidget.value = parseFloat((durationFrames / frameRate).toFixed(3));
+  }
+
+  prRepairNumberWidget(node, "custom_width", 0, 0, 8192, true);
+  prRepairNumberWidget(node, "custom_height", 0, 0, 8192, true);
+  prRepairNumberWidget(node, "divisible_by", 32, 1, 256, true);
+  prRepairNumberWidget(node, "img_compression", 18, 0, 100, true);
 
   const epsilonWidget = prGetWidget(node, "epsilon");
   const epsilon = Number(epsilonWidget?.value);
@@ -845,6 +934,78 @@ function prRepairSixGridWidgetValues(node) {
   if (guideStrengthWidget && (guideStrengthWidget.value === undefined || guideStrengthWidget.value === null || guideStrengthWidget.value === "")) {
     guideStrengthWidget.value = "1.0";
   }
+
+  prRepairNumberWidget(node, "border_crop", 1.0, 0, 5, false);
+}
+
+function prGridDimensionsFromMode(value) {
+  const mode = String(value || "");
+  if (mode.includes("2x2") || mode.includes("\u56db\u5bab\u683c")) return { cols: 2, rows: 2 };
+  if (mode.includes("3x3") || mode.includes("\u4e5d\u5bab\u683c")) return { cols: 3, rows: 3 };
+  return { cols: 3, rows: 2 };
+}
+
+function prGetGridDimensions(node) {
+  return prGridDimensionsFromMode(prGetWidgetValue(node, "grid_mode", "3x2 \u516d\u5bab\u683c"));
+}
+
+function prShotAspectRatioFromValue(value) {
+  const mode = String(value || "");
+  if (mode.includes("16:9") || mode.includes("\u6a2a\u5c4f")) return 16 / 9;
+  if (mode.includes("9:16") || mode.includes("\u7ad6\u5c4f")) return 9 / 16;
+  if (mode.includes("1:1") || mode.includes("\u65b9\u56fe")) return 1;
+  return null;
+}
+
+function prGetShotCropOptions(node) {
+  const rawStrength = Number(prGetWidgetValue(node, "border_crop", 1.0));
+  return {
+    targetRatio: prShotAspectRatioFromValue(prGetWidgetValue(node, "shot_aspect", "")),
+    borderCropStrength: Math.max(0, Math.min(5, Number.isFinite(rawStrength) ? rawStrength : 1.0)),
+  };
+}
+
+function prGridCropBounds(width, height, idx, cols, rows, borderCropStrength, targetRatio) {
+  cols = Math.max(1, Math.round(Number(cols) || 1));
+  rows = Math.max(1, Math.round(Number(rows) || 1));
+  const col = idx % cols;
+  const row = Math.floor(idx / cols);
+  const cellW = Math.max(1, Math.floor(width / cols));
+  const cellH = Math.max(1, Math.floor(height / rows));
+  let sx = col * cellW;
+  let sy = row * cellH;
+  let sx2 = sx + cellW;
+  let sy2 = sy + cellH;
+  const inset = Math.round(Math.min(cellW, cellH) * BORDER_CROP_BASE_FRACTION * borderCropStrength);
+  if (inset > 0 && cellW > inset * 2 + 2 && cellH > inset * 2 + 2) {
+    sx += inset;
+    sx2 -= inset;
+    sy += inset;
+    sy2 -= inset;
+  }
+
+  if (targetRatio && targetRatio > 0) {
+    const cropW = Math.max(1, sx2 - sx);
+    const cropH = Math.max(1, sy2 - sy);
+    const currentRatio = cropW / cropH;
+    if (currentRatio > targetRatio) {
+      const newW = Math.max(1, Math.round(cropH * targetRatio));
+      const offset = Math.max(0, Math.floor((cropW - newW) / 2));
+      sx += offset;
+      sx2 = sx + newW;
+    } else if (currentRatio < targetRatio) {
+      const newH = Math.max(1, Math.round(cropW / targetRatio));
+      const offset = Math.max(0, Math.floor((cropH - newH) / 2));
+      sy += offset;
+      sy2 = sy + newH;
+    }
+  }
+
+  sx = Math.max(0, Math.min(width - 1, sx));
+  sy = Math.max(0, Math.min(height - 1, sy));
+  sx2 = Math.max(sx + 1, Math.min(width, sx2));
+  sy2 = Math.max(sy + 1, Math.min(height, sy2));
+  return { sx, sy, sw: Math.max(1, sx2 - sx), sh: Math.max(1, sy2 - sy) };
 }
 
 function prGetGraphLink(linkId) {
@@ -884,25 +1045,21 @@ function prLoadImageUrl(loadNode) {
 function prGetSixGridSource(node) {
   const splitNode = prGetOriginNode(node, "storyboard_images");
   if (!splitNode) return null;
+  const selectedGrid = prGetGridDimensions(node);
 
   if (prIsLoadImageNode(splitNode)) {
-    return { cols: 3, rows: 2, url: prLoadImageUrl(splitNode) };
+    return { cols: selectedGrid.cols, rows: selectedGrid.rows, url: prLoadImageUrl(splitNode) };
   }
 
-  let cols = Number(prGetWidgetValueAny(splitNode, ["\u6c34\u5e73\u5f20\u6570", "cols", "columns"], 1, NaN));
-  let rows = Number(prGetWidgetValueAny(splitNode, ["\u5782\u76f4\u5f20\u6570", "rows"], 2, NaN));
-  cols = Math.max(1, Math.round(cols || 3));
-  rows = Math.max(1, Math.round(rows || 2));
-
   const imageLink = prGetGraphLink(splitNode.inputs?.[0]?.link);
-  if (!imageLink) return { cols, rows, url: "" };
+  if (!imageLink) return { cols: selectedGrid.cols, rows: selectedGrid.rows, url: "" };
   const originId = imageLink.origin_id ?? imageLink.originId ?? imageLink[1];
   const imageNode = app.graph?.getNodeById?.(originId);
-  if (!imageNode) return { cols, rows, url: "" };
+  if (!imageNode) return { cols: selectedGrid.cols, rows: selectedGrid.rows, url: "" };
 
   const url = prIsLoadImageNode(imageNode) ? prLoadImageUrl(imageNode) : "";
   if (!url) {
-    console.warn("[LTX Six Grid Director] Could not resolve source image URL for six-grid preview.", {
+    console.warn("[LTX Grid Director] Could not resolve source image URL for grid preview.", {
       splitNodeId: splitNode.id,
       imageNodeId: imageNode.id,
       imageNodeType: imageNode.type || imageNode.comfyClass,
@@ -910,7 +1067,7 @@ function prGetSixGridSource(node) {
       widgets_values: imageNode.widgets_values,
     });
   }
-  return { cols, rows, url };
+  return { cols: selectedGrid.cols, rows: selectedGrid.rows, url };
 }
 
 function prStripFence(text) {
@@ -1187,6 +1344,7 @@ class TimelineEditor {
     this._lastSixGridSourceKey = "";
     this._lastSixGridCheck = 0;
     this._lastSixGridInputKey = "";
+    this._lastGridCropKey = "";
     this._sixGridAutoRefreshTimer = null;
     this._sixGridAutoRefreshPending = false;
     this._sixGridPendingSource = null;
@@ -1303,7 +1461,7 @@ class TimelineEditor {
         const text = prExtractTextFromExecutionOutput(output);
         if (text) this.receiveLLMResponseText(text);
       } catch (err) {
-        console.warn("[LTX Six Grid Director] Could not read LLM response from history:", err);
+        console.warn("[LTX Grid Director] Could not read LLM response from history:", err);
       }
     };
     api.addEventListener("executed", this._onPromptExecuted);
@@ -1343,7 +1501,7 @@ class TimelineEditor {
   }
 
   // Grow the timeline duration to fit `requiredFrames` if it is currently shorter.
-  // The timeline only ever grows — never shrinks — through this method.
+  // The timeline only ever grows -never shrinks -through this method.
   growTimelineIfNeeded(requiredFrames) {
     const current = this.getDurationFrames();
     if (requiredFrames <= current) return; // already big enough
@@ -1376,8 +1534,8 @@ class TimelineEditor {
   }
 
   // Returns the visual timeline length in frames:
-  // the furthest segment end (across both tracks) × 1.30, with a floor of getDurationFrames().
-  // This is used for all rendering/positioning — the actual output duration is getDurationFrames().
+  // the furthest segment end (across both tracks) 脳 1.30, with a floor of getDurationFrames().
+  // This is used for all rendering/positioning -the actual output duration is getDurationFrames().
   getVisualDurationFrames() {
     let furthest = 0;
     for (const seg of this.timeline.segments) {
@@ -1490,8 +1648,8 @@ class TimelineEditor {
 
     const autoFillBtn = document.createElement("button");
     autoFillBtn.className = "pr-btn";
-    autoFillBtn.innerHTML = `${ICONS.upload} ${ZH.autoFill6}`;
-    autoFillBtn.title = ZH.autoFill6Title;
+    autoFillBtn.innerHTML = `${ICONS.upload} ${ZH.autoFillGrid}`;
+    autoFillBtn.title = ZH.autoFillGridTitle;
     autoFillBtn.addEventListener("click", () => this.autoFillFromSixGrid(false));
 
     const syncTextBtn = document.createElement("button");
@@ -2000,6 +2158,7 @@ class TimelineEditor {
     const viewportWidth = this.viewport.clientWidth;
     const currentScale = this.getRenderScale();
     this.checkSixGridSourceChange();
+    this.checkGridCropOptionChange();
     this.checkConnectedLLMTextChange();
 
     if (viewportWidth > 0 && (this._lastWidth !== viewportWidth || this._lastZoom !== this.zoomLevel || this._lastScale !== currentScale)) {
@@ -2026,6 +2185,18 @@ class TimelineEditor {
 
     this.ensureSixGridPreviewImage(source, sourceKey);
     this.requestSixGridAutoRefresh("source", source, sourceKey);
+  }
+
+  checkGridCropOptionChange() {
+    if (!prIsSixGridDirector(this.node)) return;
+    const options = prGetShotCropOptions(this.node);
+    const key = [
+      options.targetRatio || "auto",
+      options.borderCropStrength.toFixed(3),
+    ].join("|");
+    if (key === this._lastGridCropKey) return;
+    this._lastGridCropKey = key;
+    this.render();
   }
 
   sixGridInputKey(source = null, sourceKey = "") {
@@ -2098,7 +2269,7 @@ class TimelineEditor {
         if (this._sixGridPreviewSourceKey === sourceKey) {
           this._sixGridPreviewImage = null;
         }
-        console.warn("[LTX Six Grid Director] Could not load six-grid preview image:", err);
+        console.warn("[LTX Grid Director] Could not load grid preview image:", err);
         return null;
       })
       .finally(() => {
@@ -2203,7 +2374,7 @@ class TimelineEditor {
               targetFrameStart = newStart + newLength; // For the next file in batch
             }
 
-            // Use the full intended length — the timeline has already been grown to fit.
+            // Use the full intended length -the timeline has already been grown to fit.
             let constrainedLength = newLength;
 
             const seg = {
@@ -2315,7 +2486,7 @@ class TimelineEditor {
             targetFrameStart = newStart + newLength;
           }
 
-          // Use the full clip length — timeline has already grown to fit.
+          // Use the full clip length -timeline has already grown to fit.
           let constrainedLength = newLength;
 
           const seg = {
@@ -2421,7 +2592,7 @@ class TimelineEditor {
       this.render();
       return changed;
     } catch (err) {
-      console.warn("[LTX Six Grid Director] Could not refresh six-grid preview images:", err);
+      console.warn("[LTX Grid Director] Could not refresh grid preview images:", err);
       return false;
     }
   }
@@ -2598,14 +2769,16 @@ class TimelineEditor {
     }
 
     const idx = Number.isFinite(Number(seg.batch_index)) ? Number(seg.batch_index) : 0;
-    const col = idx % source.cols;
-    const row = Math.floor(idx / source.cols);
-    const sx = Math.round(col * img.naturalWidth / source.cols);
-    const sy = Math.round(row * img.naturalHeight / source.rows);
-    const sx2 = Math.round((col + 1) * img.naturalWidth / source.cols);
-    const sy2 = Math.round((row + 1) * img.naturalHeight / source.rows);
-    const sw = Math.max(1, sx2 - sx);
-    const sh = Math.max(1, sy2 - sy);
+    const cropOptions = prGetShotCropOptions(this.node);
+    const { sx, sy, sw, sh } = prGridCropBounds(
+      img.naturalWidth,
+      img.naturalHeight,
+      idx,
+      source.cols,
+      source.rows,
+      cropOptions.borderCropStrength,
+      cropOptions.targetRatio,
+    );
     const imgRatio = sw / sh;
     const boxRatio = pxWidth / this.blockHeight;
     let drawW, drawH, drawX, drawY;
@@ -2719,7 +2892,7 @@ class TimelineEditor {
       }
 
       if (this.drawSixGridStoryboardSegment(seg, startX, pxWidth)) {
-        // Drawn directly from the shared six-grid source image.
+        // Drawn directly from the shared grid source image.
       } else if (imgObj && imgObj.complete && imgObj.naturalWidth > 0 && seg.type !== "ghost") {
         const imgRatio = imgObj.naturalWidth / imgObj.naturalHeight;
         const boxRatio = pxWidth / this.blockHeight;
@@ -2739,10 +2912,10 @@ class TimelineEditor {
         this.ctx.clip();
 
         if (imgRatio > boxRatio) {
-          // Fits width, vertical letterboxing (black bars top/bottom) — keep as is
+          // Fits width, vertical letterboxing (black bars top/bottom) -keep as is
           this.ctx.drawImage(imgObj, drawX, drawY, drawW, drawH);
         } else {
-          // Fits height, horizontal letterboxing (black bars left/right) — tile horizontally
+          // Fits height, horizontal letterboxing (black bars left/right) -tile horizontally
           this.ctx.drawImage(imgObj, drawX, drawY, drawW, drawH);
 
           // Tile left
@@ -3675,7 +3848,7 @@ class TimelineEditor {
       if (seg.start >= durationFrames) break;
 
       if (seg.start > currentCursor) {
-        // Gap between the cursor and this segment — clip it at the cutoff too.
+        // Gap between the cursor and this segment -clip it at the cutoff too.
         const gapLength = Math.min(seg.start, durationFrames) - currentCursor;
         if (contiguousLengths.length > 0) {
           contiguousLengths[contiguousLengths.length - 1] += gapLength;
@@ -4694,9 +4867,7 @@ app.registerExtension({
             this.addWidget("string", name, def, () => { });
           }
         }
-        for (const w of this.widgets) {
-          if (HIDDEN_WIDGET_NAMES.includes(w.name)) hideWidget(w);
-        }
+        prHideSixGridInternalWidgets(this);
 
         // Set default width to be wider on creation (approx 2.5x default ~220px)
         this.size[0] = 1000;
@@ -4761,10 +4932,12 @@ app.registerExtension({
           const w = this.widgets.find(x => x.name === name);
           if (w && (w.value == null || w.value === "")) w.value = def;
         }
+        prHideSixGridInternalWidgets(this);
 
         setTimeout(() => {
           prApplySixGridChineseLabels(this);
           prRepairSixGridWidgetValues(this);
+          prHideSixGridInternalWidgets(this);
           if (this._timelineEditor) {
             this._timelineEditor.timeline = parseInitial(this._timelineEditor.timelineDataWidget?.value);
             this._timelineEditor.loadImages();

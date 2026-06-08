@@ -1,376 +1,147 @@
 # CS-WhatDreamsCost-ComfyUI
 
-## Source and Attribution
-
 This project is based on [WhatDreamsCost/WhatDreamsCost-ComfyUI](https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI).
-The original author is credited here as the pre-existing source. This repository is a CS fork that adds a separate `CS-` namespace, so it can be installed beside the original plugin without replacing the original WhatDreamsCost node IDs.
+Credit for the original LTX director idea and base implementation belongs to the original author. This fork focuses on a CS-prefixed ComfyUI workflow for grid storyboard automation.
 
-## Overview
+## 节点说明
 
-`CS-WhatDreamsCost-ComfyUI` focuses on an automated LTX storyboard workflow:
+核心节点：
 
-- Split a single 3x2 six-grid storyboard image into six ordered shots.
-- Pass LLM/GPT/Qwen shot text into the director timeline.
-- Review and manually edit each shot prompt, duration, image guide, and audio segment before generation.
-- Keep the original LTX Director timeline workflow, while registering all public nodes under `CS-...` IDs.
-- Add guide latent size alignment in `CS-LTXDirectorGuide` to reduce LTX guide insertion size errors.
+| 节点 ID | 显示名称 | 作用 |
+| --- | --- | --- |
+| `CS-LTXGridDirector` | `CS-LTX 宫格导演台` | 从四宫格、六宫格或九宫格图像自动创建可编辑的 LTX 导演台时间线。 |
+| `CS-LTXDirectorGuide` | `CS-LTX 导演台引导` | 将导演台输出的图像引导数据接入 LTX 条件和潜空间链路。 |
 
-这个分支的核心目标是把“六宫格图像 -> 六段分镜 -> 可编辑导演台时间线 -> LTX 生成”尽量自动化，同时保留前端手动修改能力。
+`CS-LTX 宫格导演台` 是原六宫格导演台的升级版，支持 `2x2 四宫格`、`3x2 六宫格`、`3x3 九宫格`，并增加分镜比例裁剪、白边裁剪强度、图像源变化自动刷新和旧工作流参数自修复。
 
-## CS Namespace
+## 基本流程
 
-This fork intentionally registers public nodes with `CS-` IDs. The legacy WhatDreamsCost node IDs are not registered here, so shared platforms such as RunningHub should not treat this package as a replacement for the original plugin.
+1. 准备一张四宫格、六宫格或九宫格参考图。
+2. 将参考图连接到 `宫格图像`。
+3. 将 GPT、Qwen 反推模型或其他文本节点生成的分镜文本连接到 `GPT 分镜文本`。
+4. 选择 `宫格模式`，例如 `3x2 六宫格`。
+5. 选择 `分镜比例`，例如 `16:9 横屏` 或 `9:16 竖屏`。
+6. 根据宫格边框情况调整 `白边裁剪强度`。
+7. 点击 `自动填充宫格`，节点会生成对应数量的可编辑分镜块。
+8. 在导演台前端检查并手动修改每段分镜文本、时长或顺序。
+9. 将 `引导数据` 接到 `CS-LTX 导演台引导`，继续连接 LTX 采样和解码节点。
 
-| Original-style node | CS fork node ID |
+## 宫格模式
+
+拆分顺序始终为从左到右、从上到下。
+
+| 模式 | 分镜数量 | 顺序 |
+| --- | ---: | --- |
+| `2x2 四宫格` | 4 | 左上、右上、左下、右下 |
+| `3x2 六宫格` | 6 | 上排 1-3，下排 4-6 |
+| `3x3 九宫格` | 9 | 第一排 1-3，第二排 4-6，第三排 7-9 |
+
+## 分镜比例
+
+`分镜比例` 控制每个宫格单元拆出来之后的最终画面比例。
+
+| 选项 | 说明 |
 | --- | --- |
-| `LTXDirector` | `CS-LTXDirector` |
-| `LTXAutoDirector` | `CS-LTXAutoDirector` |
-| `LTXSixGridDirector` | `CS-LTXSixGridDirector` |
-| `LTXDirectorGuide` | `CS-LTXDirectorGuide` |
-| `LTXKeyframer` | `CS-LTXKeyframer` |
-| `LTXSequencer` | `CS-LTXSequencer` |
-| `MultiImageLoader` | `CS-MultiImageLoader` |
-| `SpeechLengthCalculator` | `CS-SpeechLengthCalculator` |
-| `LoadAudioUI` | `CS-LoadAudioUI` |
-| `LoadVideoUI` | `CS-LoadVideoUI` |
+| `自动 / 保持单格比例` | 保持原始宫格单元比例，最稳妥。 |
+| `16:9 横屏` | 将每个分镜居中裁切为横屏比例。 |
+| `9:16 竖屏` | 将每个分镜居中裁切为竖屏比例。 |
+| `1:1 方图` | 将每个分镜居中裁切为正方形。 |
 
-Old workflows that reference unprefixed WhatDreamsCost node IDs need to be updated to the matching `CS-...` node IDs before they can use this fork.
+推荐用法：
 
-## ▶️ YouTube Tutorial Videos
+- 横屏视频：`分镜比例 = 16:9 横屏`
+- 竖屏视频：`分镜比例 = 9:16 竖屏`
+- 不确定比例：`分镜比例 = 自动 / 保持单格比例`
 
-<table>
-  <tr>
-    <td>
-      <p align="center">LTX Director Trailer</p>
-      <a href="https://www.youtube.com/watch?v=fZgtkRcu4_k">
-        <img src="https://img.youtube.com/vi/fZgtkRcu4_k/0.jpg" alt="LTX Director Trailer" width="400">
-      </a>
-    </td>
-    <td>
-      <p align="center">LTX Director Tutorial</p>
-      <a href="https://www.youtube.com/watch?v=vM60pJJqqEI">
-        <img src="https://img.youtube.com/vi/vM60pJJqqEI/0.jpg" alt="LTX Director Tutorial" width="400">
-      </a>
-    </td>
-  </tr>
-</table>
+## 白边裁剪强度
 
-## How to Install
+`白边裁剪强度` 用来裁掉宫格之间的白线、黑边、分割线或边框残留。
 
-1. Navigate to your `ComfyUI/custom_nodes` folder.
-2. Clone this repository:
+| 数值 | 说明 |
+| ---: | --- |
+| `0` | 不额外裁剪边缘。 |
+| `0.5` | 轻微裁剪，适合人物贴边的画面。 |
+| `1.0` | 默认裁剪，适合大多数宫格图。 |
+| `1.5` | 加强裁剪，适合有明显白线或边框的图。 |
+| `2.0-5.0` | 强裁剪，只建议在边框很厚时使用。 |
 
-```bash
-git clone https://github.com/yg496/CS-WhatDreamsCost-ComfyUI.git
-```
-
-3. Restart ComfyUI.
-4. Search for `CS-` in the ComfyUI node menu.
-
-You can also install it through ComfyUI Manager after the package is available there.
-
-**Important**
-
-If you don't see the latest version (v1.4.3) yet in the manager then just downloaded the nightly version (or fetch the updates to update the list to see the latest version). 
-Also you will need to update ComfyUI-LTXVideo and ComfyUI-KJNodes to the latest version as well. You cannot use this node without updating ComfyUI-LTXVideo!
-
-# Recent Updates
-
-**v1.4.4**
-  * **Six-grid source refresh fix**
-    - The six-grid director now rebuilds the six storyboard timeline blocks only when the upstream six-grid image source changes.
-    - Connected `llm_response` text still syncs into the current six blocks, but text changes alone no longer clear the timeline cache.
-    - During execution, storyboard-image segments prefer the current connected `llm_response` prompts, preventing a new six-grid image from accidentally using prompts from the previous run.
-
-**v1.4.3**
-  * **Lean six-grid preview rendering**
-    - Six-grid storyboard thumbnails are now drawn directly from one shared source image during canvas rendering.
-    - The node no longer creates six cropped base64 preview images for automatic storyboard segments.
-    - Old storyboard `imageB64` payloads are stripped when timelines are loaded and re-saved.
-
-**v1.4.2**
-  * **RunningHub timeline performance fix**
-    - Six-grid previews are now stored as lightweight front-end cache instead of being written into `timeline_data`.
-    - Drag and resize operations no longer deep-copy base64 image/audio payloads.
-    - Six-grid preview crops are downscaled and JPEG-compressed for smoother timeline interaction.
-
-**v1.4.1**
-  * **RunningHub frontend sync fix**
-    - The six-grid director now reads connected LLM text from upstream text display nodes, such as `showAnything`, instead of relying only on the local `llm_response` widget.
-    - The timeline polls the connected text source and syncs updated shot prompts into the front-end editor automatically.
-
-**v1.4.0 CS fork**
-  * **New node: CS-LTX Six-Grid Director / CS-LTX 六宫格导演台**
-    - Adds an automatic six-grid storyboard workflow on top of the original LTX Director timeline.
-    - Accepts a single 3x2 storyboard image or a batch of six images, then builds six editable timeline shots.
-    - Connects LLM/GPT/Qwen shot text into the timeline so prompts can be reviewed and manually edited before generation.
-    - Registers all public nodes under `CS-...` IDs to avoid overwriting the original WhatDreamsCost nodes on shared platforms.
-    - Refreshes six-grid previews when the upstream storyboard image changes.
-    - Adds a guide latent size alignment fix in `CS-LTXDirectorGuide` for more stable LTX guide insertion.
-
-**v1.3.9**
-  * **Fixed recent updates not showing in the manager**
-
-It took like 5 tries but I finally got it working 🤦‍♂️
-
-**v1.3.3**
-  * **LTX Director Hotfix 2**
-    - Fixed duration_seconds input issue.
-    - Made both duration widgets visible at all times now
-    - Implemented audio latent fix to improve compatibility
-
-
-**v1.3.2**
-  * **LTX Director Hotfix**
-    - Fixed epsilon input overlapping custom_width input
-    - Fixed invisible widgets in nodes 2.0 when toggling widget visibility through settings menu
-
-If anyone finds anymore bugs or has idea for improvements please let me know! 
-
-
-**v1.3.1**
-  * **LTX Director Example Workflow Fix**
-    - Minor fix to the example workflow (i forgot to set the clip loader type to ltxv lol)
-    
- **v1.3.0**
-  * **New nodes: LTX Director and LTX Director Guide**
-    - A complete timeline editor that can do almost everything. It's my most ambitious node so far and the successor to LTX Sequencer/Multi Image Loader.
-
- **v1.2.9**
-  * **Fixed every known issue with Multi Image Loader and added text output to Speech Length Calculator**
-  
-    - Removed the completely useless drag and drop animations (now it's snappy and no longer finicky)
-    - Fixed the node resizing on nodes 2.0 
-    - Updated grid logic to fit images better
-    - Added ablity to right click images to copy/open/save images
-    - Fixed the "invisible hitbox" underneath node issue (actually this time).
-
-  Also added a text output to the Speech Length Calculator node (can't believe i didn't do this initially)
-
-<details>
-  <summary>Click to view older Updates</summary>
-
- **v1.2.8**
-  * **Updated Load Video UI and Color Conversion**
-    * Added crop mode, a simple interface to crop videos. It also include various aspect ratio presets.
-    * Updated color conversion to ensure colors are as accurate as possible. Will first check metadata for colorspace, and if metadata is missing then it will guess the colorspace based on video dimensions.
-    * Updated display mode toggle UI to be more understandable 
-
- **v1.2.7**
-  * **New Node: Load Video UI**
-
-Custom Node to Trim, Resize, and Preview Videos in Realtime
-  
-   **v1.2.6**
-  * **Updated Speech Length Calculator UI**
-
-Also added duration output to the Load Audio UI node
-
- **v1.2.5**
-  * **Updated Load Audio UI Node**
-    * Added Duration Setting
-    * Made the whole selection bar draggable
-    * Fixed Trimmed UI to show centiseconds
-    
- **v1.2.4**
- * **New Node: Load Audio UI**
-
-Overhaul of the load audio node. Features a simple interface to easily trim audio. Also allows dragging and dropping files (fixes the original node that doesn't allow dropping in videos). Also compatible with nodes 2.0.
-
- **v1.2.3**
-  * **Workflow Update + Minor Bug Fix** 
-    * Added new workflow that is compatible with the latest ComfyUI version (as of 4/27/26). The new workflow also included an option to include custom audio, and has minor improvements of the previous workflows.
-    * Fixed minor bug with Multi Image Loader that blocked mouse input in a small area under the node 🤷‍♂️
-
-**v1.2.0**
-  * **New Node: Speech Length Calculator** 
-  
-  Automatically output in realtime how long a video should be based on the dialouge. 
-
-**v1.1.0**
-  * Added resize_method to the Multi Image Loader node for more resize options
-  * Added insert_mode which allows you to enter in seconds instead of frames on the LTX Sequencer node
-  * Updated workflows with more notes
-  * Re-added tiny vae to workflows
-  * Fixed various bugs
-  * more things i can't rememeber
-  
-**This update will change the node layouts, so be sure to update your workflows or else they won't work properly.**
-
-❗❗❗ **New Tutorial on using these nodes available: https://www.youtube.com/watch?v=aXDIr8eNovI**  ❗❗❗
-</details>
-
-# ⚙️ Custom Nodes
-
-## CS-LTX Six-Grid Director / CS-LTX 六宫格导演台
-
-`CS-LTX 六宫格导演台` 是这个分支的核心新增节点。它保留了原版 LTX Director 的时间线编辑能力，同时把六宫格分镜图、LLM/GPT/Qwen 分镜文本、LTX 引导图生成流程接到一起，让“六宫格图像 -> 六段分镜 -> 可编辑时间线 -> LTX 生成”尽量自动化。
-
-它适合这样的工作流：先由上游节点生成一张 3x2 六宫格分镜图，再让反推模型或 GPT 输出 6 段分镜描述，导演台节点会自动把六宫格拆成 6 个分镜块，并把对应文本写入时间线。运行前你仍然可以在前端手动修改每段分镜的提示词、时长和引导强度。
-
-**ComfyUI 节点名称：**
-
-| Name | Meaning |
-| --- | --- |
-| `CS-LTX 六宫格导演台` | ComfyUI 里看到的节点显示名。 |
-| `CS-LTXSixGridDirector` | 新的节点内部 ID。 |
-| `CS-...` | 这个分支的所有公开节点都使用 `CS-` 前缀，避免覆盖原作者插件。 |
-
-**基础流程：**
-
-1. 用上游节点生成或加载一张 3x2 六宫格分镜图。
-2. 把六宫格图片接到 `六宫格拆分图` / `storyboard_images`。
-3. 把 LLM/GPT/Qwen 输出的分镜文本接到 `GPT 分镜文本` / `llm_response`。
-4. 把 LTX 模型和 CLIP 接到 `模型` / `model` 与 `文本编码器` / `clip`。
-5. 如果工作流需要音频潜空间，可以额外接入 Audio VAE。
-6. 打开节点前端时间线，检查 6 个图像分镜块，并按需要调整每段时长和提示词。
-7. 把 `引导数据` / `guide_data` 接到 `CS-LTXDirectorGuide`，把 `视频潜空间` / `video_latent` 接入 LTX 采样链路。
-
-**六宫格读取顺序：**
-
-六宫格按标准 3x2 顺序读取，从左到右、从上到下：
+计算逻辑：
 
 ```text
-1  2  3
-4  5  6
+裁剪像素 = 单格短边 × 0.015 × 白边裁剪强度
 ```
 
-也就是说，第 1 段是左上角，第 3 段是右上角，第 4 段是左下角，第 6 段是右下角。
+例如单个分镜约为 `640 x 360`，短边是 `360`，强度 `1.0` 时每边大约裁掉 5 像素。
 
-**推荐的分镜文本格式：**
+## 输出宽度和输出高度
 
-推荐让 GPT/Qwen 输出 JSON，因为它能同时保存分镜序号、提示词和每段帧数，最适合全自动工作流：
+`输出宽度` 与 `输出高度` 用于强制导演台输出给 LTX 的分镜参考图尺寸。
 
-```json
-[
-  {"shot": 1, "prompt": "Wide shot, character enters the room...", "frames": 20},
-  {"shot": 2, "prompt": "Medium shot, character reports to the boss...", "frames": 20},
-  {"shot": 3, "prompt": "Close-up, boss listens and thinks...", "frames": 20}
-]
+通常建议保持：
+
+```text
+输出宽度 = 0
+输出高度 = 0
 ```
 
-节点也会尝试解析编号文本或普通文本，但如果你希望工作流稳定自动运行，JSON 是最稳的格式。
+这样节点会根据拆分后的分镜图像自然处理尺寸。大多数横屏、竖屏和方图需求只需要设置 `分镜比例`，不需要再单独填写宽高。
 
-**前端可手动编辑：**
+只有在明确需要固定参考图尺寸时才填写，例如：
 
-自动填充之后，6 个分镜块不是锁死的。你仍然可以在导演台里手动调整：
+```text
+1280 x 720
+720 x 1280
+1024 x 1024
+```
 
-- 拖动或缩放分镜块，修改每段起止时间；
-- 选中分镜后，在文本框里修改该段提示词；
-- 修改每段图像引导强度；
-- 继续手动添加图像、文本或音频片段；
-- 使用原版 LTX Director 的自定义音频和时间线播放控制。
+如果旧工作流里出现异常值，节点前端会尽量自动修复非法数值。正常使用时，宽高保持 `0 / 0` 即可。
 
-这些手动修改会写入 `时间线数据` / `timeline_data`。对于普通手动片段，真正运行时会使用当前前端时间线里的最终内容；对于来自六宫格的自动分镜片段，如果当前连接的 `llm_response` 已经生成了新的 6 段文本，节点会优先使用当前文本，避免沿用上一轮缓存的提示词。
+## 文本输入建议
 
-**自动刷新规则：**
+推荐让 GPT 或 Qwen 反推模型输出纯中文自然段，每个自然段对应一个分镜。正文不需要 JSON，也不需要额外解释。
 
-六宫格导演台只会在 `六宫格拆分图` / `storyboard_images` 的上游图片来源发生变化时，自动清除上一轮六宫格时间线缓存并重新创建 6 个分镜块。
+示例：
 
-如果只是 `GPT 分镜文本` / `llm_response` 发生变化，节点会把新文本同步到当前 6 个分镜块里，但不会因为文本变化而清除整条时间线。修改 `总帧数`、`总秒数` 或 `帧率` 也不会触发清缓存。
+```text
+中景，女方坐在高层办公室的会议桌前，身穿灰色西装外套和白色内搭，低头翻阅合同文件，眉头微微皱起，镜头从桌面上的咖啡杯缓慢推向她的脸，纸张翻动声和窗外城市车流声混在安静的办公氛围里，女方用标准普通话（低声而谨慎）：“这里的预算数据对不上，我们可能低估了风险。”
 
-**LTX 引导尺寸修复：**
+中近景，男方穿着深色外套站在玻璃会议室门口，手里拿着平板，目光沉稳地看向女方，镜头从玻璃门边缘轻轻横移到他的侧脸，背景里传来空调运转声和远处键盘声，男方用标准普通话（冷静而克制）：“先别急，把你发现的问题完整说给我听。”
+```
 
-有些 LTX 工作流里，引导图经过 VAE 编码后会得到和主视频 latent 不一致的空间尺寸，例如 `Expected size 33 but got size 17`。这个分支在 `CS-LTXDirectorGuide` 中加入了尺寸对齐步骤，会在插入 keyframe 前把 guide latent 自动对齐到当前视频 latent 的尺寸，减少这类报错。
+文本段落数量建议与宫格模式一致：
 
+- `2x2 四宫格`：4 段
+- `3x2 六宫格`：6 段
+- `3x3 九宫格`：9 段
 
-## CS-LTX Director
-<img width="1481" height="833" alt="Clipboard Image (2)" src="https://github.com/user-attachments/assets/08f3fe53-9393-4f5d-9de5-58b229fbed47" />
+多余段落会被忽略，缺少段落时可以在导演台前端手动补充。
 
-A Complete Timeline Editor For LTX 2.3. This is the sucessor of my previous nodes, and has loads of features in it. It was originally based off of [Kijai's Prompt Relay node](https://github.com/kijai/ComfyUI-PromptRelay) and my LTX Sequencer/Multi Image Loader nodes.
+## 自动刷新规则
 
-**Main Features:**
-- **Fully Functional Timeline Editor:** I spent hours studying various video editors and ended up with this design. If anyone has ideas for improvements let me know! I will adding documentation on all the functions soon.
-- **Prompt Relay integrated:** This unlocks the ability to have granular control over video generation. For more information on Prompt Relay go here, https://gordonchen19.github.io/Prompt-Relay/
-- **First, Middle, Last Frame Support:** This has by far the easiest method of creating first/last frames videos. It supports any number of keyframes, and will be the successor of my previous nodes.
-- **Custom Audio Support:** Import, trim, and combine your own audio clips in this node. Enabling custom audio is as simple as clicking 1 button. It is also compatible with every other feature in the node, include first/last frames, t2v, i2v, and prompt relay.
-- **Image to Video:** Part of the goal of this node was to make it easier to do everything, including Image to Video. It has built in resize functionality, and of course all the benifits of the prompt relay and custom audio integration.
-- **Text to Video:** Use text segments to create T2V videos. Compatible with all other features of the node.
+导演台会根据上游宫格图像来源判断是否需要刷新时间线。
 
-Download workflows here: https://github.com/yg496/CS-WhatDreamsCost-ComfyUI/tree/main/example_workflows
+- 上游宫格图像变化：自动清除上一轮宫格缓存并刷新分镜图像。
+- 文本变化：可以通过 `同步文本` 写入当前分镜块。
+- 总帧数、总秒数、帧率、分镜比例、白边裁剪强度变化：不会主动清空分镜文本，避免误删手动修改。
 
-**Tutorial videos and documentation coming soon**
+执行时，自动宫格分镜会优先使用当前连接的 `GPT 分镜文本`，减少新图像误用上一轮提示词的情况。
 
+## 常见问题
 
-## CS-Multi Image Loader
-<img width="1280" height="720" alt="Multi_Image_Loader_Wide_Gif" src="https://github.com/user-attachments/assets/99b6afd8-5197-4e6c-81da-a7bd156c42c7" />
+画面边缘有白线：提高 `白边裁剪强度`，例如 `1.2` 或 `1.5`。
 
-An Image loader that features a built in gallery, allowing your to easily rearrange images and output them seperately or batched together. It also combines the image resize node and LTXVPreprocess node to reduce clutter in LTX workflows.
+人物被裁掉：降低 `白边裁剪强度`，例如 `0.5`。
 
-## CS-LTX Sequencer
-![LTX_Sequencer_GIF](https://github.com/user-attachments/assets/88f27155-f50e-4cb2-b937-ab173e6bdf0b)
+想做横屏视频：选择 `分镜比例 = 16:9 横屏`，宽高保持 `0 / 0`。
 
-An overhaul of the LTXVAddGuideMulti node. It allows you to quickly create FFLF (First Frame Last Frame) videos, shot sequences, supports any number of middle frames.
+想做竖屏视频：选择 `分镜比例 = 9:16 竖屏`，宽高保持 `0 / 0`。
 
-Connect the `CS-MultiImageLoader` node's `multi_output` to automatically update the node's widgets.
+节点参数显示 `NaN` 或旧值错位：刷新 ComfyUI 页面或重新打开工作流，节点会自动修复常见非法值。
 
-It also has a sync feature that syncs all LTX Sequencer nodes together in realtime, removing the need to edit every single node manually every time you want to make a change to something. 
+## 安装
 
+将仓库放入 ComfyUI 的 `custom_nodes` 目录，然后重启 ComfyUI：
 
-## CS-LTX Keyframer
-<img width="1082" height="608" alt="LTX Keyframer Wide" src="https://github.com/user-attachments/assets/850ba4a2-dbca-4e5a-a580-1c271e9f0c41" />
-
-An overhaul of the LTXVImgToVideoInplaceKJ node. It allows you to quickly create FFLF (First Frame Last Frame) videos and shot sequences. Also upports any number of middle frames.
-
-Connect the `CS-MultiImageLoader` node's `multi_output` to automatically update the node's widgets.
-
-It also has a sync feature that syncs all LTX Keyframer nodes together in realtime, removing the need to edit every single node manually every time you want to make a change to something. 
-
-**I would recommend using the LTX Sequencer Node over this node, after further testing it seems superior in at pretty much everything. I'll leave it in just in case more people want to test it**
-
-## CS-Speech Length Calculator
-<img width="1280" height="720" alt="Speech Length Calculator v2 Gif" src="https://github.com/user-attachments/assets/04b9a1cf-20e4-4b7b-a9c6-4a5a0825995b" />
-<br>
-<br>
-This node calculates in realtime how long a video should be based on the dialogue. Any words in quotations will be considered as speech. The node updates in realtime without having to run the workflow, and outputs the length depending on how fast the speech is.
-
-If you connect another string/text node to the text_input, it will still update in the length in realtime.
-
-I kept having to play the guessing game on my own generations so I made this node to make it easier :man_shrugging:
-
-## CS-Load Video UI  
-<table width="100%">
-  <tr>
-    <td width="50%" align="center">
-      <p>Simple Controls</p>
-      <img src="https://github.com/user-attachments/assets/fb76ff03-a6ff-4837-bd63-7e429f5f3d37" width="100%" />
-    </td>
-    <td width="50%" align="center">
-      <p>New Crop Mode!</p>
-      <img src="https://github.com/user-attachments/assets/28cfb4ca-e42a-44da-9afb-f20cb01b9722" width="100%" />
-    </td>
-  </tr>
-</table>
-
-<br>
-<br>
-An upgraded Load Video node. It has the following features:
-
-* Simple interface to quickly trim videos and preview them in realtime.
-* Ability to load any length of video into the node (the default load video node was limited to 100MB files)
-* Easily switch between showing seconds and frames with a toggle button. This will change the widgets as well as the interface.
-* Multiple options for resizing the video (maintain aspect ratio, crop, stretch to fit, pad)
-* Allows dragging and dropping files into the node
-* Progress bar
-* Optimized to use less RAM (still very limited due to ComfyUI limitations, but at least a little more efficient)
-
-Please note that due to ComfyUI limitations (and the fact that this node doesn't use any addtional libraries), this node will not work well for outputting large videos. You can trim any length of video without a problem, but if the output is still large it will end up using a lot of RAM. I have implemented various optimizations though to make it use less memory.
-
-## CS-Load Audio UI  
-<img width="1280" height="720" alt="Load_Audio_UI_V2" src="https://github.com/user-attachments/assets/e3dc5c8d-d0b9-4336-8196-944204719239" />
-<br>
-<br>
-An upgraded Load Audio node. Features a simple interface to easily trim audio. Also allows dragging and dropping files (fixes the original node that doesn't allow dropping in videos). Also compatible with nodes 2.0.
-
-# 💡 Workflows
-Download workflows here: https://github.com/yg496/CS-WhatDreamsCost-ComfyUI/tree/main/example_workflows
-
-# ❗ Known Issues
-
-Fixed everything so far. If there are any other issue or bugs you find please let me know!
-
-# 💡 Additional Info
-
-Feel free to suggest improvements, and if you run into any bugs let me know!
-
-For those asking, I mainly used gemini to create these nodes.
+```text
+ComfyUI/custom_nodes/CS-WhatDreamsCost-ComfyUI
+```

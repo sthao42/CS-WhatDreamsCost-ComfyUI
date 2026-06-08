@@ -10,7 +10,7 @@ class LTXDirectorGuide(LTXVAddGuide):
     def define_schema(cls):
         return io.Schema(
             node_id="CS-LTXDirectorGuide",
-            display_name="CS LTX Director Guide",
+            display_name="CS-LTX 导演台引导",
             category="CS-WhatDreamsCost",
             description=(
                 "Applies guide images from a Prompt Relay Timeline node at the frame positions "
@@ -20,7 +20,7 @@ class LTXDirectorGuide(LTXVAddGuide):
                 io.Conditioning.Input("positive", tooltip="Positive conditioning to add guide keyframe info to."),
                 io.Conditioning.Input("negative", tooltip="Negative conditioning to add guide keyframe info to."),
                 io.Vae.Input("vae", tooltip="Video VAE used to encode the guide images."),
-                io.Latent.Input("latent", tooltip="Video latent — guides are inserted into this latent."),
+                io.Latent.Input("latent", tooltip="Video latent - guides are inserted into this latent."),
                 GuideData.Input("guide_data", tooltip="Guide data produced by Prompt Relay Encode (Timeline)."),
                 io.Float.Input("scale_by", default=1.0, min=0.01, max=8.0, step=0.01, tooltip="Scale the latent by this factor."),
                 io.Combo.Input("upscale_method", options=["nearest-exact", "bilinear", "area", "bicubic", "bislerp"], default="bicubic", tooltip="Method used to upscale/downscale the latent."),

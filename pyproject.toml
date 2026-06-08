@@ -1,7 +1,7 @@
 [project]
 name = "CS-WhatDreamsCost-ComfyUI"
-description = "CS LTX six-grid director and supporting ComfyUI nodes based on WhatDreamsCost-ComfyUI."
-version = "1.4.3"
+description = "CS LTX grid director and supporting ComfyUI nodes based on WhatDreamsCost-ComfyUI."
+version = "1.5.0"
 license = {file = "LICENSE"} 
 # classifiers = [
 #     # For OS-independent nodes (works on all operating systems)

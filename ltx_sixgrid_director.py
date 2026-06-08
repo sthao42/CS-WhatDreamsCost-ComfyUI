@@ -48,9 +48,60 @@ RESIZE_METHOD_ALIASES = {
     "\u88c1\u526a\u586b\u6ee1": "crop",
 }
 
+GRID_MODE_OPTIONS = ["2x2 \u56db\u5bab\u683c", "3x2 \u516d\u5bab\u683c", "3x3 \u4e5d\u5bab\u683c"]
+SHOT_ASPECT_OPTIONS = ["\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b", "16:9 \u6a2a\u5c4f", "9:16 \u7ad6\u5c4f", "1:1 \u65b9\u56fe"]
+
+GRID_MODE_ALIASES = {
+    "2x2": (2, 2),
+    "2x2 \u56db\u5bab\u683c": (2, 2),
+    "\u56db\u5bab\u683c": (2, 2),
+    "4": (2, 2),
+    "3x2": (3, 2),
+    "2x3": (3, 2),
+    "3x2 \u516d\u5bab\u683c": (3, 2),
+    "2x3 \u516d\u5bab\u683c": (3, 2),
+    "\u516d\u5bab\u683c": (3, 2),
+    "6": (3, 2),
+    "3x3": (3, 3),
+    "3x3 \u4e5d\u5bab\u683c": (3, 3),
+    "\u4e5d\u5bab\u683c": (3, 3),
+    "9": (3, 3),
+}
+
+SHOT_ASPECT_ALIASES = {
+    "": None,
+    "auto": None,
+    "\u81ea\u52a8": None,
+    "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b": None,
+    "keep": None,
+    "16:9": 16 / 9,
+    "16:9 \u6a2a\u5c4f": 16 / 9,
+    "\u6a2a\u5c4f": 16 / 9,
+    "9:16": 9 / 16,
+    "9:16 \u7ad6\u5c4f": 9 / 16,
+    "\u7ad6\u5c4f": 9 / 16,
+    "1:1": 1.0,
+    "1:1 \u65b9\u56fe": 1.0,
+    "\u65b9\u56fe": 1.0,
+}
+
+BORDER_CROP_BASE_FRACTION = 0.015
+
 
 def _normalize_choice(value, aliases, default):
     return aliases.get(_to_str(value).strip(), default)
+
+
+def _grid_dimensions(grid_mode):
+    return GRID_MODE_ALIASES.get(_to_str(grid_mode).strip(), (3, 2))
+
+
+def _shot_aspect_ratio(shot_aspect):
+    return SHOT_ASPECT_ALIASES.get(_to_str(shot_aspect).strip(), None)
+
+
+def _safe_crop_strength(value):
+    return max(0.0, min(5.0, _to_float(value, 1.0)))
 
 
 def _fallback_prompt(index: int) -> str:
@@ -64,22 +115,87 @@ def _image_segment_count(timeline):
     ])
 
 
-def _split_single_six_grid_image(storyboard_images, count, cols=3, rows=2):
-    if storyboard_images is None or count <= 1:
-        return storyboard_images
-    if int(storyboard_images.shape[0]) != 1:
-        return storyboard_images
-
-    _, height, width, _ = storyboard_images.shape
+def _grid_crop_bounds(width, height, idx, cols, rows, border_crop_strength, target_ratio):
+    cols = max(1, int(cols))
+    rows = max(1, int(rows))
+    col = idx % cols
+    row = idx // cols
     cell_w = max(1, int(width) // cols)
     cell_h = max(1, int(height) // rows)
+    x0 = col * cell_w
+    x1 = x0 + cell_w
+    y0 = row * cell_h
+    y1 = y0 + cell_h
+    inset = int(round(min(cell_w, cell_h) * BORDER_CROP_BASE_FRACTION * border_crop_strength))
+    if inset > 0 and cell_w > inset * 2 + 2 and cell_h > inset * 2 + 2:
+        x0 += inset
+        x1 -= inset
+        y0 += inset
+        y1 -= inset
+
+    if target_ratio and target_ratio > 0:
+        crop_w = max(1, x1 - x0)
+        crop_h = max(1, y1 - y0)
+        current_ratio = crop_w / crop_h
+        if current_ratio > target_ratio:
+            new_w = max(1, int(round(crop_h * target_ratio)))
+            offset = max(0, (crop_w - new_w) // 2)
+            x0 += offset
+            x1 = x0 + new_w
+        elif current_ratio < target_ratio:
+            new_h = max(1, int(round(crop_w / target_ratio)))
+            offset = max(0, (crop_h - new_h) // 2)
+            y0 += offset
+            y1 = y0 + new_h
+
+    x0 = max(0, min(width - 1, x0))
+    y0 = max(0, min(height - 1, y0))
+    x1 = max(x0 + 1, min(width, x1))
+    y1 = max(y0 + 1, min(height, y1))
+    return x0, y0, x1, y1
+
+
+def _crop_tensor_by_options(tensor, idx, cols, rows, border_crop_strength, target_ratio):
+    _, height, width, _ = tensor.shape
+    x0, y0, x1, y1 = _grid_crop_bounds(
+        int(width),
+        int(height),
+        idx,
+        cols,
+        rows,
+        border_crop_strength,
+        target_ratio,
+    )
+    return tensor[:, y0:y1, x0:x1, :]
+
+
+def _prepare_grid_images(storyboard_images, count, cols, rows, border_crop_strength, target_ratio):
+    if storyboard_images is None or count < 1:
+        return storyboard_images
+
+    batch_count = int(storyboard_images.shape[0])
     crops = []
-    for idx in range(min(MAX_AUTO_SEGMENTS, count, cols * rows)):
-        col = idx % cols
-        row = idx // cols
-        x0 = col * cell_w
-        y0 = row * cell_h
-        crops.append(storyboard_images[:, y0:y0 + cell_h, x0:x0 + cell_w, :])
+
+    if batch_count == 1:
+        for idx in range(min(MAX_AUTO_SEGMENTS, count, cols * rows)):
+            crops.append(_crop_tensor_by_options(
+                storyboard_images,
+                idx,
+                cols,
+                rows,
+                border_crop_strength,
+                target_ratio,
+            ))
+    else:
+        for idx in range(min(MAX_AUTO_SEGMENTS, count, batch_count)):
+            crops.append(_crop_tensor_by_options(
+                storyboard_images[idx:idx + 1],
+                0,
+                1,
+                1,
+                border_crop_strength,
+                target_ratio,
+            ))
 
     if not crops:
         return storyboard_images
@@ -87,13 +203,14 @@ def _split_single_six_grid_image(storyboard_images, count, cols=3, rows=2):
 
 
 def _build_default_timeline(storyboard_images, llm_response, duration_frames, frame_rate,
-                            segment_lengths, guide_strength, parse_mode):
+                            segment_lengths, guide_strength, parse_mode, cols, rows):
     batch_count = int(storyboard_images.shape[0]) if storyboard_images is not None else 0
     prompts, json_lengths = _parse_prompts(llm_response, parse_mode)
+    grid_count = max(1, min(MAX_AUTO_SEGMENTS, int(cols) * int(rows)))
     if batch_count == 1:
-        count = min(MAX_AUTO_SEGMENTS, len(prompts) or MAX_AUTO_SEGMENTS)
+        count = grid_count
     else:
-        count = max(1, min(MAX_AUTO_SEGMENTS, batch_count or MAX_AUTO_SEGMENTS))
+        count = max(1, min(grid_count, batch_count or grid_count))
     prompts = (prompts + [_fallback_prompt(i) for i in range(count)])[:count]
     lengths = _normalize_lengths(segment_lengths, json_lengths, duration_frames, count, frame_rate)
     strengths = _strengths_for_count(guide_strength, count)
@@ -278,23 +395,26 @@ def _build_guide_data(timeline, storyboard_images, duration_frames, frame_rate, 
     return guide_data, derived_w, derived_h
 
 
-class LTXSixGridDirector(io.ComfyNode):
-    """Original LTX Director timeline with automatic six-grid image and LLM prompt fill."""
+class LTXGridDirector(io.ComfyNode):
+    """Original LTX Director timeline with automatic grid image and LLM prompt fill."""
 
     @classmethod
     def define_schema(cls):
         return io.Schema(
-            node_id="CS-LTXSixGridDirector",
-            display_name="CS-LTX \u516d\u5bab\u683c\u5bfc\u6f14\u53f0",
+            node_id="CS-LTXGridDirector",
+            display_name="CS-LTX \u5bab\u683c\u5bfc\u6f14\u53f0",
             category="CS-WhatDreamsCost",
             description=(
-                "LTX \u5bfc\u6f14\u53f0\u7684\u516d\u5bab\u683c\u81ea\u52a8\u7248\uff1a\u81ea\u52a8\u63a5\u6536\u62c6\u5206\u56fe\u548c GPT \u5206\u955c\u6587\u672c\uff0c"
-                "\u540c\u65f6\u4fdd\u7559\u53ef\u624b\u52a8\u7f16\u8f91\u7684\u65f6\u95f4\u7ebf\u3002"
+                "LTX \u5bfc\u6f14\u53f0\u7684\u901a\u7528\u5bab\u683c\u81ea\u52a8\u7248\uff1a\u652f\u6301 2x2 \u56db\u5bab\u683c\u30013x2 \u516d\u5bab\u683c\u548c 3x3 \u4e5d\u5bab\u683c\uff0c"
+                "\u81ea\u52a8\u63a5\u6536\u5bab\u683c\u56fe\u548c GPT \u5206\u955c\u6587\u672c\uff0c\u540c\u65f6\u4fdd\u7559\u53ef\u624b\u52a8\u7f16\u8f91\u7684\u65f6\u95f4\u7ebf\u3002"
             ),
             inputs=[
                 io.Model.Input("model", display_name="\u6a21\u578b"),
                 io.Clip.Input("clip", display_name="\u6587\u672c\u7f16\u7801\u5668"),
-                io.Image.Input("storyboard_images", display_name="\u516d\u5bab\u683c\u62c6\u5206\u56fe", optional=True),
+                io.Image.Input("storyboard_images", display_name="\u5bab\u683c\u56fe\u50cf", optional=True),
+                io.Combo.Input("grid_mode", display_name="\u5bab\u683c\u6a21\u5f0f", options=GRID_MODE_OPTIONS, default="3x2 \u516d\u5bab\u683c", optional=True),
+                io.Combo.Input("shot_aspect", display_name="\u5206\u955c\u6bd4\u4f8b", options=SHOT_ASPECT_OPTIONS, default="\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b", optional=True),
+                io.Float.Input("border_crop", display_name="\u767d\u8fb9\u88c1\u526a\u5f3a\u5ea6", default=1.0, min=0.0, max=5.0, step=0.05, optional=True),
                 io.String.Input("llm_response", display_name="GPT \u5206\u955c\u6587\u672c", multiline=True, default=""),
                 io.Vae.Input("audio_vae", display_name="\u97f3\u9891 VAE", optional=True),
                 io.Latent.Input("optional_latent", display_name="\u53ef\u9009\u6f5c\u7a7a\u95f4", optional=True),
@@ -339,7 +459,8 @@ class LTXSixGridDirector(io.ComfyNode):
                 frame_rate=24, display_mode="seconds", custom_width=0, custom_height=0,
                 resize_method="maintain aspect ratio", divisible_by=32, img_compression=18,
                 storyboard_images=None, llm_response="", audio_vae=None, optional_latent=None,
-                use_custom_audio=False, parse_mode="auto") -> io.NodeOutput:
+                use_custom_audio=False, parse_mode="auto", grid_mode="3x2 \u516d\u5bab\u683c",
+                shot_aspect="\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b", border_crop=1.0) -> io.NodeOutput:
         llm_response = _to_str(llm_response)
         global_prompt = _to_str(global_prompt)
         segment_lengths = _to_str(segment_lengths)
@@ -353,6 +474,9 @@ class LTXSixGridDirector(io.ComfyNode):
         img_compression = max(0, _to_int(img_compression, 18))
         parse_mode = _normalize_choice(parse_mode, PARSE_MODE_ALIASES, "auto")
         resize_method = _normalize_choice(resize_method, RESIZE_METHOD_ALIASES, "maintain aspect ratio")
+        grid_cols, grid_rows = _grid_dimensions(grid_mode)
+        target_ratio = _shot_aspect_ratio(shot_aspect)
+        border_crop_strength = _safe_crop_strength(border_crop)
 
         parsed_prompts, _ = _parse_prompts(llm_response, parse_mode)
         timeline = _decode_timeline(timeline_data)
@@ -366,6 +490,8 @@ class LTXSixGridDirector(io.ComfyNode):
                 segment_lengths,
                 guide_strength,
                 parse_mode,
+                grid_cols,
+                grid_rows,
             )
 
         timeline_json = json.dumps(timeline, ensure_ascii=False)
@@ -374,9 +500,13 @@ class LTXSixGridDirector(io.ComfyNode):
             parsed_prompts,
             duration_frames,
         )
-        storyboard_images_for_guides = _split_single_six_grid_image(
+        storyboard_images_for_guides = _prepare_grid_images(
             storyboard_images,
             _image_segment_count(timeline),
+            grid_cols,
+            grid_rows,
+            border_crop_strength,
+            target_ratio,
         )
 
         guide_data, derived_w, derived_h = _build_guide_data(
@@ -442,7 +572,7 @@ class LTXSixGridDirector(io.ComfyNode):
                         "noise_mask": mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])),
                     }
                 except Exception as exc:
-                    log.error("[LTX Six Grid Director] Failed to encode custom audio: %s", exc)
+                    log.error("[LTX Grid Director] Failed to encode custom audio: %s", exc)
                     raise exc
             else:
                 audio_latent = _empty_audio_latent(audio_vae, ltxv_length, frame_rate)
@@ -451,9 +581,9 @@ class LTXSixGridDirector(io.ComfyNode):
 
 
 NODE_CLASS_MAPPINGS = {
-    "CS-LTXSixGridDirector": LTXSixGridDirector,
+    "CS-LTXGridDirector": LTXGridDirector,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "CS-LTXSixGridDirector": "CS-LTX \u516d\u5bab\u683c\u5bfc\u6f14\u53f0",
+    "CS-LTXGridDirector": "CS-LTX \u5bab\u683c\u5bfc\u6f14\u53f0",
 }

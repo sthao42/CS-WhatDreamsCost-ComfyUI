@@ -6,7 +6,7 @@ from .load_audio_ui import LoadAudioUI
 from .load_video_ui import LoadVideoUI
 from .ltx_director import LTXDirector
 from .ltx_auto_director import LTXAutoDirector
-from .ltx_sixgrid_director import LTXSixGridDirector
+from .ltx_sixgrid_director import LTXGridDirector
 from .ltx_director_guide import LTXDirectorGuide
 from comfy_api.latest import ComfyExtension, io
 from typing_extensions import override
@@ -18,7 +18,7 @@ class CSWhatDreamsCostExtension(ComfyExtension):
         return [
             LTXDirector,
             LTXAutoDirector,
-            LTXSixGridDirector,
+            LTXGridDirector,
             LTXDirectorGuide,
         ]
 
@@ -36,7 +36,7 @@ NODE_CLASS_MAPPINGS = {
     "CS-LoadVideoUI": LoadVideoUI,
     "CS-LTXDirector": LTXDirector,
     "CS-LTXAutoDirector": LTXAutoDirector,
-    "CS-LTXSixGridDirector": LTXSixGridDirector,
+    "CS-LTXGridDirector": LTXGridDirector,
     "CS-LTXDirectorGuide": LTXDirectorGuide,
 }
 
@@ -49,8 +49,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "CS-LoadVideoUI": "CS Load Video UI",
     "CS-LTXDirector": "CS LTX Director",
     "CS-LTXAutoDirector": "CS LTX Auto Director",
-    "CS-LTXSixGridDirector": "CS-LTX \u516d\u5bab\u683c\u5bfc\u6f14\u53f0",
-    "CS-LTXDirectorGuide": "CS LTX Director Guide",
+    "CS-LTXGridDirector": "CS-LTX 宫格导演台",
+    "CS-LTXDirectorGuide": "CS-LTX 导演台引导",
 }
 
 WEB_DIRECTORY = "./js"
