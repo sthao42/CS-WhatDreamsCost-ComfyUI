@@ -2205,6 +2205,21 @@ class TimelineEditor {
     return sourceKey || "";
   }
 
+  sixGridTimelineSourceState(sourceKey = "") {
+    const segments = (this.timeline?.segments || []).filter((seg) => seg?.source === "storyboard_images");
+    const keys = Array.from(new Set(
+      segments
+        .map((seg) => String(seg.storyboardPreviewKey || ""))
+        .filter(Boolean)
+    ));
+    return {
+      count: segments.length,
+      keys,
+      hasKnownSource: keys.length > 0,
+      matchesCurrent: !!sourceKey && keys.length > 0 && keys.every((key) => key === sourceKey),
+    };
+  }
+
   requestSixGridAutoRefresh(reason = "input", source = null, sourceKey = "") {
     if (!prIsSixGridDirector(this.node)) return false;
     source = source || prGetSixGridSource(this.node);
@@ -2213,6 +2228,22 @@ class TimelineEditor {
 
     const inputKey = this.sixGridInputKey(source, sourceKey);
     if (!inputKey || inputKey === this._lastSixGridInputKey) return false;
+
+    const sourceState = this.sixGridTimelineSourceState(sourceKey);
+    if (sourceState.count > 0 && sourceState.matchesCurrent) {
+      this._lastSixGridInputKey = inputKey;
+      this._lastSixGridSourceKey = sourceKey;
+      this.ensureSixGridPreviewImage(source, sourceKey);
+      this.refreshSixGridPreviews(source, sourceKey);
+      return false;
+    }
+    if (sourceState.count > 0 && !sourceState.hasKnownSource && (reason === "init" || reason === "source")) {
+      this._lastSixGridInputKey = inputKey;
+      this._lastSixGridSourceKey = sourceKey;
+      this.refreshSixGridPreviews(source, sourceKey);
+      return false;
+    }
+
     this._lastSixGridInputKey = inputKey;
     this._lastSixGridSourceKey = sourceKey;
 
